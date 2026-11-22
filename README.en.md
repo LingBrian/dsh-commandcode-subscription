@@ -35,7 +35,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (after publication):** `dsh-commandcode-subscription@0.1.0`
+- **npm (published):** `dsh-commandcode-subscription@0.1.0`
 
 Click **Install** and follow the restart prompt. The GitHub source builds the plugin entry through `prepare`; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -61,7 +61,7 @@ pnpm run check
 pnpm pack --pack-destination .artifacts
 ```
 
-Then install the generated `.artifacts/*.tgz` as the plugin address. Use the npm address only after that version has been published.
+Then install the generated `.artifacts/*.tgz` as the plugin address. For npm installs, use a version that has been published.
 
 Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or a browser request. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
 

@@ -35,7 +35,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（发布后）**：`dsh-commandcode-subscription@0.1.0`
+- **npm（已发布）**：`dsh-commandcode-subscription@0.1.0`
 
 点击 **Install** 并按提示重启。GitHub 来源在安装时通过 `prepare` 构建插件入口；npm 方式安装已发布的预构建包。若在新版本发布后安装，可将 npm 地址中的版本号换成所需版本。
 
@@ -61,7 +61,7 @@ pnpm run check
 pnpm pack --pack-destination .artifacts
 ```
 
-再将生成的 `.artifacts/*.tgz` 作为插件地址安装。请确认 npm 地址仅在该版本已发布后使用。
+再将生成的 `.artifacts/*.tgz` 作为插件地址安装。npm 安装地址使用已发布的版本号。
 
 在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
 
