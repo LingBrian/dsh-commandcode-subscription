@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Command Code Go",
+    "description": "在 DSH 中使用 Command Code Go 模型。需自行配置 Command Code API Key；原生 NDJSON 流式接入（实验性）。",
+    "detail": "docs/plugin/DETAIL.zh.md"
+  }
+}

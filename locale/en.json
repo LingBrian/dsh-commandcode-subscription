@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Command Code Go",
+    "description": "Use Command Code Go models in DSH. Requires your own Command Code API key; experimental native NDJSON streaming.",
+    "detail": "docs/plugin/DETAIL.md"
+  }
+}
