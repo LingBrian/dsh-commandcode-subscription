@@ -19,14 +19,17 @@ test('plugin card locale manifests are bilingual and point at packaged details',
   }
 })
 
-test('README languages cross-link and do not imply npm publication or OAuth', async () => {
+test('README languages cross-link and document GitHub, npm, and desktop installs', async () => {
   const zh = await load('README.md')
   const en = await load('README.en.md')
   assert.ok(zh.includes('[English](README.en.md)'))
   assert.ok(en.includes('[中文](README.md)'))
   for (const readme of [zh, en]) {
+    assert.ok(readme.includes('github:LingBrian/dsh-commandcode-subscription'))
+    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.0'))
+    assert.ok(readme.includes('dsh plugin --profile desktop add'))
+    assert.ok(readme.includes('dsh plugin --profile web add'))
     assert.ok(readme.includes('pnpm pack --pack-destination .artifacts'))
-    assert.ok(readme.includes('dsh plugin --profile web add ./.artifacts/dsh-commandcode-subscription-0.1.0.tgz'))
     assert.ok(readme.includes('COMMANDCODE_API_KEY'))
     assert.ok(readme.includes('/alpha/generate'))
   }

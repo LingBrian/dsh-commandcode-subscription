@@ -32,19 +32,36 @@
 
 ## 安装
 
-**当前未发布到 npm。** 从本仓库源码构建安装包，再由 DSH 安装；不要在插件页直接输入未发布的包名。
+在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
+
+- **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
+- **npm（发布后）**：`dsh-commandcode-subscription@0.1.0`
+
+点击 **Install** 并按提示重启。GitHub 来源在安装时通过 `prepare` 构建插件入口；npm 方式安装已发布的预构建包。若在新版本发布后安装，可将 npm 地址中的版本号换成所需版本。
+
+**Desktop 安装：**在 DSH Desktop 应用中打开 **Plugins → Add plugin**，粘贴上述任一地址并安装；按提示重启应用。桌面端和 Web 端使用各自的插件 profile，需分别安装。若已安装桌面版 CLI，也可显式安装到对应 profile：
 
 ```sh
-cd dsh-commandcode-subscription
-pnpm install --frozen-lockfile
-pnpm run check
-mkdir .artifacts
-pnpm pack --pack-destination .artifacts
-# 在此目录执行（也可换成该 tgz 的绝对路径）
-dsh plugin --profile web add ./.artifacts/dsh-commandcode-subscription-0.1.0.tgz
+dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
+# 或
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.0
 ```
 
-安装后按 DSH 提示重启**当前** Web 进程。若使用其他 profile，改用相应的 `--profile`；桌面端的插件安装方式以当前 DSH 版本说明为准。版本号改变时，安装包文件名也会变化。
+已有 CLI 的 Web profile 安装命令：
+
+```sh
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.0
+```
+
+从源码打包（开发或离线安装）时，在仓库根目录执行：
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run check
+pnpm pack --pack-destination .artifacts
+```
+
+再将生成的 `.artifacts/*.tgz` 作为插件地址安装。请确认 npm 地址仅在该版本已发布后使用。
 
 在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
 

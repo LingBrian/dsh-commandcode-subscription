@@ -32,19 +32,36 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 
 ## Install
 
-**Not yet published to npm.** Build the archive from this repository and install it through DSH; do not enter an unpublished package name into the plugin page.
+On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
+
+- **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
+- **npm (after publication):** `dsh-commandcode-subscription@0.1.0`
+
+Click **Install** and follow the restart prompt. The GitHub source builds the plugin entry through `prepare`; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
+
+**Desktop installation:** In the DSH Desktop app, open **Plugins → Add plugin**, paste either address above, and install. Restart the app if prompted. Desktop and Web use separate plugin profiles, so install into each profile you use. If the DSH CLI is available, explicitly target the Desktop profile:
 
 ```sh
-cd dsh-commandcode-subscription
-pnpm install --frozen-lockfile
-pnpm run check
-mkdir .artifacts
-pnpm pack --pack-destination .artifacts
-# Run in this directory (or use the absolute path to the archive)
-dsh plugin --profile web add ./.artifacts/dsh-commandcode-subscription-0.1.0.tgz
+dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
+# or
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.0
 ```
 
-Restart the **existing** DSH Web process if prompted. Use the appropriate `--profile` for other profiles; follow your DSH version's instructions for desktop plugin installation. The archive filename changes when the version changes.
+For the Web profile with an existing CLI:
+
+```sh
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.0
+```
+
+To build a source archive for development or offline installation, run from the repository root:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run check
+pnpm pack --pack-destination .artifacts
+```
+
+Then install the generated `.artifacts/*.tgz` as the plugin address. Use the npm address only after that version has been published.
 
 Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or a browser request. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
 
