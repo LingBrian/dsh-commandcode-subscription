@@ -37,7 +37,7 @@
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
 - **npm（已发布）**：`dsh-commandcode-subscription@0.1.0`
 
-点击 **Install** 并按提示重启。GitHub 来源在安装时通过 `prepare` 构建插件入口；npm 方式安装已发布的预构建包。若在新版本发布后安装，可将 npm 地址中的版本号换成所需版本。
+点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
 **Desktop 安装：**在 DSH Desktop 应用中打开 **Plugins → Add plugin**，粘贴上述任一地址并安装；按提示重启应用。桌面端和 Web 端使用各自的插件 profile，需分别安装。若已安装桌面版 CLI，也可显式安装到对应 profile：
 
@@ -80,6 +80,6 @@ pnpm install --frozen-lockfile
 pnpm run check
 ```
 
-源代码在 `src/`，`lib/` 是构建产物（不提交），测试在 `tests/`。新增语言时增加词典并登记语言代码，保持键和占位符一致，运行测试验证回退。不要提交密钥、日志或包含真实账号数据的 fixture。
+源代码在 `src/`，`lib/` 是随仓库提交的构建产物，供 GitHub 安装来源直接使用；修改源码后运行 `pnpm run build` 并提交对应的 `lib/` 更新。测试在 `tests/`。新增语言时增加词典并登记语言代码，保持键和占位符一致，运行测试验证回退。不要提交密钥、日志或包含真实账号数据的 fixture。
 
 协议与 DSH 集成曾参考本地 `commandcode-go-for-pi`、`commandcode-api-proxy`、`dsh-codex-subscription` 项目；各项目许可证和上游服务条款独立。本项目使用 [MIT 许可证](LICENSE)。

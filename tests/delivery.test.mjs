@@ -5,6 +5,14 @@ import test from 'node:test'
 const root = new URL('../', import.meta.url)
 const load = path => readFile(new URL(path, root), 'utf8')
 
+test('GitHub install ships built entry without lifecycle scripts', async () => {
+  const pkg = JSON.parse(await load('package.json'))
+  assert.equal(pkg.scripts.prepare, undefined)
+  for (const file of ['index.js', 'credential.js', 'commandcode-provider.js', 'locale.js']) {
+    assert.equal(await load(`lib/${file}`), await load(`src/${file}`))
+  }
+})
+
 test('plugin card locale manifests are bilingual and point at packaged details', async () => {
   const pkg = JSON.parse(await load('package.json'))
   assert.equal(pkg.exports['./locale/*.json'], './locale/*.json')

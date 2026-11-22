@@ -9,7 +9,6 @@
   "files": ["lib/*.js", "cordis.patch.yml", "locale/*.json", "docs/plugin/*.md", "README.md", "README.en.md", "LICENSE"],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "prepare": "npm run build",
     "test": "node --test tests/*.test.mjs",
     "check": "npm run test && npm run build"
   },

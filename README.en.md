@@ -37,7 +37,7 @@ On the DSH **Plugins → Add plugin** page, paste either source into **Package n
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
 - **npm (published):** `dsh-commandcode-subscription@0.1.0`
 
-Click **Install** and follow the restart prompt. The GitHub source builds the plugin entry through `prepare`; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
+Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
 **Desktop installation:** In the DSH Desktop app, open **Plugins → Add plugin**, paste either address above, and install. Restart the app if prompted. Desktop and Web use separate plugin profiles, so install into each profile you use. If the DSH CLI is available, explicitly target the Desktop profile:
 
@@ -80,6 +80,6 @@ pnpm install --frozen-lockfile
 pnpm run check
 ```
 
-Sources live in `src/`, generated `lib/` is not committed, and tests live in `tests/`. To add a language, register a dictionary and keep keys and placeholders in sync; run the tests to check fallback behavior. Do not commit API keys, logs, or fixtures with real account data.
+Sources live in `src/`, and generated `lib/` is committed for direct GitHub installs; after changing sources, run `pnpm run build` and commit the matching `lib/` updates. Tests live in `tests/`. To add a language, register a dictionary and keep keys and placeholders in sync; run the tests to check fallback behavior. Do not commit API keys, logs, or fixtures with real account data.
 
 Protocol and DSH integration were researched using local `commandcode-go-for-pi`, `commandcode-api-proxy`, and `dsh-codex-subscription` references. Their licenses and upstream terms remain independent. This project is [MIT licensed](LICENSE).
