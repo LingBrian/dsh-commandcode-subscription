@@ -8,9 +8,11 @@ const load = path => readFile(new URL(path, root), 'utf8')
 test('GitHub install ships built entry without lifecycle scripts', async () => {
   const pkg = JSON.parse(await load('package.json'))
   assert.equal(pkg.scripts.prepare, undefined)
-  for (const file of ['index.js', 'credential.js', 'commandcode-provider.js', 'locale.js']) {
+  for (const file of ['index.js', 'credential.js', 'commandcode-provider.js', 'locale.js', 'usage.js', 'usage-transport.js', 'client.js']) {
     assert.equal(await load(`lib/${file}`), await load(`src/${file}`))
   }
+  assert.equal(pkg.exports['./client'], './lib/client.js')
+  assert.equal(pkg.dsh.client.platform, 'web')
 })
 
 test('plugin card locale manifests are bilingual and point at packaged details', async () => {
@@ -34,7 +36,7 @@ test('README languages cross-link and document GitHub, npm, and desktop installs
   assert.ok(en.includes('[中文](README.md)'))
   for (const readme of [zh, en]) {
     assert.ok(readme.includes('github:LingBrian/dsh-commandcode-subscription'))
-    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.6'))
+    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.7'))
     assert.ok(readme.includes('dsh plugin --profile desktop add'))
     assert.ok(readme.includes('dsh plugin --profile web add'))
     assert.ok(readme.includes('pnpm pack --pack-destination .artifacts'))

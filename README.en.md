@@ -25,6 +25,7 @@ The DSH credential service manages your Command Code API key. The plugin connect
 | Streaming | Converts native NDJSON into DSH text, reasoning, tool-call, and tool-result events; supports cancellation. |
 | Image understanding | Enables DSH image attachments for models known to accept image input and sends bounded image data in the native request. |
 | Credentials | Resolves `COMMANDCODE_API_KEY` through DSH's host credential service. The key is never saved in plugin settings or sent to the browser. |
+| Usage | Opens a plugin usage dialog with 5-hour, weekly, and monthly quota bars, balances, and request totals. Percentages appear only when the provider reports a cap. |
 | Languages | Runtime message dictionaries for English and Simplified Chinese; resolves a request-provided locale and falls back to English for missing or unsupported locales. More languages can be added through the same dictionary framework. |
 
 ## Prepare DSH
@@ -36,7 +37,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (published):** `dsh-commandcode-subscription@0.1.6`
+- **npm (published):** `dsh-commandcode-subscription@0.1.7`
 
 Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -45,13 +46,13 @@ Click **Install** and follow the restart prompt. The GitHub repository includes 
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # or
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.6
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.7
 ```
 
 For the Web profile with an existing CLI:
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.6
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.7
 ```
 
 To build a source archive for development or offline installation, run from the repository root:
@@ -66,6 +67,8 @@ Then install the generated `.artifacts/*.tgz` as the plugin address. For npm ins
 
 Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or a browser request. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
 
+**View usage:** Open **Command Code usage** in plugin settings and select **View usage**. The host reads Command Code account endpoints on demand; the API key never reaches the browser. You can refresh the dialog. If some endpoints fail, the available data remains visible with a partial-data notice. Consult your Command Code account for authoritative billing.
+
 **Image understanding:** Select a model marked for image input in the catalog, such as `deepseek/deepseek-v4.1-flash` or `deepseek/deepseek-v4-flash-vision-exp`, and attach an image in the DSH composer. The vision list is maintained from Command Code's official model table and intersected with the current catalog. The DSH attachment service prepares each request image with a 1 MiB byte target and an approximately 2048 × 2048 pixel budget; encoded images in one request are capped at 20 MiB. Model access still depends on the Command Code account; the public catalog does not guarantee entitlement.
 
 ## Scope and limitations
@@ -77,7 +80,7 @@ Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the sa
 - Distinguishes failures during request preparation, transport, and response parsing without exposing upstream error bodies or API keys.
 
 - Only the fixed `https://api.commandcode.ai` HTTPS origin receives generation requests and the key. The model catalog request needs no key. Generation is not replayed after network or stream errors; a missing finish event is an error.
-- No OAuth, account management, multi-key rotation, quota UI, or OpenAI/Anthropic-compatible proxy. A public model listing does not guarantee access. Image input is enabled only for known models, not the entire catalog.
+- No OAuth, account management, multi-key rotation, or OpenAI/Anthropic-compatible proxy. A public model listing does not guarantee access. Image input is enabled only for known models, not the entire catalog.
 - The model descriptor's zero-dollar cost is a **pi-ai placeholder**, not a free-usage claim. Refer to provider billing.
 - Runtime error dictionaries support English and Chinese, but there is no plugin-specific language switch. Without a valid locale passed to a request, messages remain English; **automatic synchronization with the DSH Web language is not guaranteed**.
 - Tests use a mock upstream and DSH adapter packages. No real account or end-to-end acceptance in a running DSH Web or desktop GUI has been performed.
@@ -91,4 +94,12 @@ pnpm run check
 
 Sources live in `src/`, and generated `lib/` is committed for direct GitHub installs; after changing sources, run `pnpm run build` and commit the matching `lib/` updates. Tests live in `tests/`. To add a language, register a dictionary and keep keys and placeholders in sync; run the tests to check fallback behavior. Do not commit API keys, logs, or fixtures with real account data.
 
-Protocol and DSH integration were researched using local `commandcode-go-for-pi`, `commandcode-api-proxy`, and `dsh-codex-subscription` references. Their licenses and upstream terms remain independent. This project is [MIT licensed](LICENSE).
+## References
+
+- [dsh-commandcode](https://github.com/Plocr/dsh-commandcode): Command Code account usage endpoints and field parsing.
+- [dsh-codex-subscription](https://github.com/WSL043/dsh-codex-subscription): DSH usage dialog and quota bar interaction.
+- [commandcode-go-for-pi](https://github.com/gonegirl07/commandcode-go-for-pi): Command Code protocol implementation.
+- [commandcode-api-proxy](https://github.com/thaolaptrinh/commandcode-api-proxy): Command Code protocol and model catalog reference.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): Plugin host.
+
+Their licenses and upstream terms remain independent. This project is [MIT licensed](LICENSE).

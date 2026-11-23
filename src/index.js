@@ -4,6 +4,7 @@ import { LlmError } from '@deepseek-ai/dsh-llm'
 import { createCommandCodeProvider } from './commandcode-provider.js'
 import { createCredentialStore } from './credential.js'
 import { currentLocale, localize, withRequestLocale } from './locale.js'
+import { registerUsageTransport } from './usage-transport.js'
 
 export const name = 'commandcode-subscription'
 export const inject = ['llm', 'credentials', 'attachments']
@@ -72,6 +73,10 @@ export function createAdapter(ctx, { provider = createCommandCodeProvider(), ref
 }
 
 export function apply(ctx) {
+  ctx.inject(['connection'], scope => scope.effect(
+    () => registerUsageTransport(scope.connection, scope.credentials, KEY_REF, PROVIDER),
+    'commandcode-subscription: read-only usage',
+  ))
   ctx.effect(() => ctx.on?.('credentials/reference-updated', ref => {
     if (ref === KEY_REF) ctx.llm.emitAdaptersUpdated?.()
   }), 'commandcode-subscription: credential changes')

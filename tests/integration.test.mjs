@@ -11,7 +11,9 @@ function fakeContext(value) {
   const disposed = []
   const effects = new Map()
   const resolutions = []
+  const usageRoutes = []
   const ctx = {
+    connection: { fetch: { register(route) { usageRoutes.push(route); return () => usageRoutes.splice(usageRoutes.indexOf(route), 1) } } },
     credentials: {
       async resolve(ref) {
         resolutions.push(ref)
@@ -29,8 +31,9 @@ function fakeContext(value) {
       effects.set(label, dispose)
       return dispose
     },
+    inject(_services, register) { register(ctx) },
   }
-  return { ctx, registered, disposed, effects, resolutions }
+  return { ctx, registered, disposed, effects, resolutions, usageRoutes }
 }
 
 function mockProvider(onStream = () => { throw new Error('synthetic stop') }) {
@@ -58,6 +61,10 @@ test('apply registers the Command Code route synchronously and disposal unregist
   assert.deepEqual(host.registered[0].providers, [PROVIDER])
   assert.equal(host.registered[0].adapter.current().profiles.get(PROVIDER).provider, PROVIDER)
   assert.equal(host.resolutions.length, 0, 'registration must not read the key')
+  assert.equal(host.usageRoutes.length, 1)
+  assert.equal(host.usageRoutes[0].path, '/api/commandcode-subscription/usage')
+  host.effects.get('commandcode-subscription: read-only usage')()
+  assert.equal(host.usageRoutes.length, 0)
   const dispose = host.effects.get('commandcode-subscription: model adapter')
   assert.equal(typeof dispose, 'function')
   dispose()
