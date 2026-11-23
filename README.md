@@ -25,7 +25,7 @@
 | 流式输出 | 将原生 NDJSON 转成 DSH 文本、推理、工具调用和工具结果事件；支持取消。 |
 | 图片理解 | 对已知支持图片的模型开放 DSH 图片附件，并将受限大小的图片转为原生请求内容。 |
 | 凭证 | 从 DSH 宿主凭证服务解析 `COMMANDCODE_API_KEY`；密钥不保存在插件配置或浏览器中。 |
-| 用量查询 | 在插件设置中打开用量对话框，查看 5 小时、每周和每月额度进度条，以及余额和请求统计；仅在服务商返回额度上限时计算百分比。 |
+| 用量查询 | 在插件设置中打开用量对话框；选择 Command Code 模型时，输入框右侧显示 5h 额度小条，悬浮可查看 5h、1w、1m 额度和进度条，每 30 秒刷新。仅在服务商返回额度上限时计算百分比。 |
 | 语言 | 英文与简体中文的运行时提示词典；按请求提供的 locale 解析，未提供或不支持时回退英文。无需改动词典框架即可增加其他语言。 |
 
 ## 准备 DSH
@@ -37,7 +37,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（已发布）**：`dsh-commandcode-subscription@0.1.8`
+- **npm（发布后）**：`dsh-commandcode-subscription@0.1.9`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -46,13 +46,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.8
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.9
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.8
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.9
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：

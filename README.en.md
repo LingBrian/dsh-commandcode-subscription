@@ -25,7 +25,7 @@ The DSH credential service manages your Command Code API key. The plugin connect
 | Streaming | Converts native NDJSON into DSH text, reasoning, tool-call, and tool-result events; supports cancellation. |
 | Image understanding | Enables DSH image attachments for models known to accept image input and sends bounded image data in the native request. |
 | Credentials | Resolves `COMMANDCODE_API_KEY` through DSH's host credential service. The key is never saved in plugin settings or sent to the browser. |
-| Usage | Opens a plugin usage dialog with 5-hour, weekly, and monthly quota bars, balances, and request totals. Percentages appear only when the provider reports a cap. |
+| Usage | Opens a plugin usage dialog. With a Command Code model selected, the composer shows a 5h quota strip; hover to see 5h, 1w, and 1m quota bars, refreshed every 30 seconds. Percentages appear only when the provider reports a cap. |
 | Languages | Runtime message dictionaries for English and Simplified Chinese; resolves a request-provided locale and falls back to English for missing or unsupported locales. More languages can be added through the same dictionary framework. |
 
 ## Prepare DSH
@@ -37,7 +37,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (published):** `dsh-commandcode-subscription@0.1.8`
+- **npm (after release):** `dsh-commandcode-subscription@0.1.9`
 
 Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -46,13 +46,13 @@ Click **Install** and follow the restart prompt. The GitHub repository includes 
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # or
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.8
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.9
 ```
 
 For the Web profile with an existing CLI:
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.8
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.9
 ```
 
 To build a source archive for development or offline installation, run from the repository root:

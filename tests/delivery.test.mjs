@@ -13,6 +13,7 @@ test('GitHub install ships built entry without lifecycle scripts', async () => {
   }
   assert.equal(pkg.exports['./client'], './lib/client.js')
   assert.equal(pkg.dsh.client.platform, 'web')
+  assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-model-selection'))
 })
 
 test('plugin card locale manifests are bilingual and point at packaged details', async () => {
@@ -36,7 +37,7 @@ test('README languages cross-link and document GitHub, npm, and desktop installs
   assert.ok(en.includes('[中文](README.md)'))
   for (const readme of [zh, en]) {
     assert.ok(readme.includes('github:LingBrian/dsh-commandcode-subscription'))
-    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.8'))
+    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.9'))
     assert.ok(readme.includes('dsh plugin --profile desktop add'))
     assert.ok(readme.includes('dsh plugin --profile web add'))
     assert.ok(readme.includes('pnpm pack --pack-destination .artifacts'))

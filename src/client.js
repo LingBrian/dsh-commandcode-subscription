@@ -21,6 +21,7 @@ window.__ModuleLoader__.load({
     const format = number => Number(number).toLocaleString(zh ? 'zh-CN' : 'en-US', { maximumFractionDigits: 3 })
     const date = value => new Date(value).toLocaleString(zh ? 'zh-CN' : 'en-US')
     const dollars = value => `$${format(value)}`
+    const QUOTA_REFRESH_MS = 30_000
 
     async function callUsage(rpc, controller, timeoutMs = 35_000) {
       let timer
@@ -30,6 +31,110 @@ window.__ModuleLoader__.load({
           new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('usage-timeout')) }, timeoutMs) }),
         ])
       } finally { clearTimeout(timer) }
+    }
+
+    function quotaRows(usage) {
+      return [
+        { id: '5h', label: copy.fiveHour, percent: usage?.windows?.fiveHour?.remainingPercent, resetAt: usage?.windows?.fiveHour?.resetAt },
+        { id: '1w', label: copy.weekly, percent: usage?.windows?.weekly?.remainingPercent, resetAt: usage?.windows?.weekly?.resetAt },
+        { id: '1m', label: copy.monthly, percent: usage?.credits?.monthlyRemainingPercent, resetAt: usage?.periodEnd },
+      ]
+    }
+
+    function createQuotaPoller(rpc, publish, { intervalMs = QUOTA_REFRESH_MS, visible = () => document.visibilityState !== 'hidden' } = {}) {
+      let stopped = false
+      let active = false
+      let controller
+      let interval
+      const refresh = async () => {
+        if (stopped || active || !visible()) return
+        active = true
+        controller = new AbortController()
+        try {
+          const result = await callUsage(rpc, controller)
+          if (!stopped) publish(result?.ok ? { value: result.value, error: undefined } : { error: result?.error ?? 'unavailable' })
+        } catch (error) {
+          if (!stopped) publish({ error: error?.message === 'usage-timeout' ? 'timeout' : 'unavailable' })
+        } finally { active = false; controller = undefined }
+      }
+      return {
+        start() { void refresh(); interval = setInterval(refresh, intervalMs) },
+        refresh,
+        stop() { stopped = true; clearInterval(interval); controller?.abort() },
+      }
+    }
+
+    function ComposerQuota({ rpc, directory }) {
+      const model = React.useSyncExternalStore(
+        listener => directory.subscribe(listener),
+        () => directory.getSnapshot(),
+      )?.current
+      const enabled = model?.provider === 'commandcode-go'
+      const [reading, setReading] = React.useState({})
+      const [open, setOpen] = React.useState(false)
+      const [pinned, setPinned] = React.useState(false)
+      const trigger = React.useRef(null)
+      const panel = React.useRef(null)
+      const dismissTimer = React.useRef(null)
+      const enter = () => { clearTimeout(dismissTimer.current); setOpen(true) }
+      const leave = () => { clearTimeout(dismissTimer.current); if (!pinned) dismissTimer.current = setTimeout(() => setOpen(false), 150) }
+      const dismiss = () => { clearTimeout(dismissTimer.current); setPinned(false); setOpen(false) }
+      React.useEffect(() => {
+        if (!enabled) { setReading({}); return undefined }
+        const poller = createQuotaPoller(rpc, next => setReading(previous => ({ ...previous, ...next })))
+        const wake = () => { if (document.visibilityState !== 'hidden') void poller.refresh() }
+        poller.start()
+        document.addEventListener('visibilitychange', wake)
+        return () => { poller.stop(); document.removeEventListener('visibilitychange', wake) }
+      }, [enabled, rpc])
+      React.useEffect(() => { dismiss() }, [model?.provider, model?.model])
+      React.useEffect(() => () => clearTimeout(dismissTimer.current), [])
+      React.useEffect(() => {
+        const node = panel.current
+        if (!open || !enabled || !node) return undefined
+        const position = () => {
+          const rect = trigger.current?.getBoundingClientRect()
+          if (!rect) return
+          const width = node.offsetWidth, height = node.offsetHeight
+          node.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`
+          const above = rect.top - height - 8
+          const below = rect.bottom + 8
+          node.style.top = `${Math.max(8, Math.min(above >= 8 ? above : below, window.innerHeight - height - 8))}px`
+        }
+        node.showPopover?.()
+        position()
+        window.addEventListener('resize', position)
+        window.addEventListener('scroll', position, true)
+        const escape = event => { if (event.key === 'Escape') { event.preventDefault(); dismiss(); trigger.current?.focus() } }
+        const outside = event => { if (!trigger.current?.contains(event.target) && !node.contains(event.target)) dismiss() }
+        document.addEventListener('keydown', escape)
+        document.addEventListener('pointerdown', outside)
+        return () => {
+          window.removeEventListener('resize', position)
+          window.removeEventListener('scroll', position, true)
+          document.removeEventListener('keydown', escape)
+          document.removeEventListener('pointerdown', outside)
+          if (node.matches?.(':popover-open')) node.hidePopover()
+        }
+      }, [open, enabled])
+      if (!enabled) return null
+      const rows = quotaRows(reading.value)
+      const short = rows[0]
+      const detail = rows.map(row => `${row.id}: ${row.percent === undefined ? copy.unknown : `${row.percent}% ${copy.remaining}`}`).join('; ')
+      return h(React.Fragment, null,
+        h('button', { ref: trigger, type: 'button', className: 'ccComposerQuota', 'aria-label': `${copy.title}: ${detail}`,
+          'aria-haspopup': 'dialog', 'aria-expanded': open, onMouseEnter: enter, onMouseLeave: leave,
+          onClick: () => { clearTimeout(dismissTimer.current); if (pinned) dismiss(); else { setPinned(true); setOpen(true) } } },
+        h('span', null, '5h'),
+        h('progress', { max: 100, value: short.percent, 'aria-hidden': true })),
+        open ? h('section', { ref: panel, popover: 'manual', role: 'dialog', className: 'ccQuotaPopover', 'aria-label': copy.title,
+          onMouseEnter: enter, onMouseLeave: leave },
+          rows.map(row => h('div', { className: 'ccQuotaRow', key: row.id },
+            h('div', { className: 'ccQuotaRowHead' }, h('span', null, row.label),
+              h('strong', null, row.percent === undefined ? copy.unknown : `${row.percent}% ${copy.remaining}`),
+              row.resetAt ? h('time', { dateTime: new Date(row.resetAt).toISOString() }, `${copy.reset} ${date(row.resetAt)}`) : null),
+            h('progress', { max: 100, value: row.percent, 'aria-label': `${row.label}: ${row.percent === undefined ? copy.unknown : `${row.percent}% ${copy.remaining}`}` }))),
+          reading.error ? h('p', { className: 'ccQuotaError' }, reading.error === 'missing-key' ? copy.missing : reading.error === 'invalid-key' ? copy.invalid : copy.unavailable) : null) : null)
     }
 
     function Bar({ label, percent, detail, reset }) {
@@ -93,11 +198,21 @@ window.__ModuleLoader__.load({
         h('button', { type: 'button', onClick: () => setOpen(true) }, copy.open),
         open ? h(UsageDialog, { rpc, close: () => setOpen(false) }) : null)
     }
-    module.exports.inject = ['slots', 'connection']
-    module.exports.__internals = { callUsage }
+    module.exports.inject = ['slots', 'connection', 'modelDirectories']
+    module.exports.__internals = { callUsage, quotaRows, createQuotaPoller, QUOTA_REFRESH_MS }
     module.exports.apply = ctx => {
       const rpc = ctx.get('connection').rpc
+      const rootDirectories = ctx.get('modelDirectories')
+      let scopedDirectories
+      if (ctx.get('remote.session') !== undefined) ctx.inject(['remote.session'], scope => scope.effect(() => {
+        scopedDirectories = scope.get('modelDirectories')
+        return () => { scopedDirectories = undefined }
+      }))
       const page = props => h(Page, { ...props, rpc })
+      ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
+        name: 'conversation.input.right', id: 'commandcode-subscription-quota', order: 16,
+        inject: sessionId => ({ rpc, directory: (scopedDirectories ?? rootDirectories).directoryFor(sessionId).store }),
+      }, ComposerQuota))
       for (const [name, key] of [
         ['settings.plugins.tab', { id: 'commandcode-subscription' }],
         ['plugins.bundle.config', { key: 'dsh-commandcode-subscription' }],
@@ -105,7 +220,7 @@ window.__ModuleLoader__.load({
       ]) ctx.slots.inject(name, () => ctx.slots.register({ name, ...key, label: () => copy.title, order: 60 }, page))
       ctx.effect(() => {
         const style = document.createElement('style')
-        style.textContent = `.ccUsagePage{display:grid;gap:.75rem;justify-items:start}.ccUsagePage p{margin:0}.ccUsagePage button,.ccUsageDialog button{cursor:pointer;border:1px solid currentColor;border-radius:.5rem;padding:.4rem .8rem;background:transparent;color:inherit}.ccUsageDialog{width:min(520px,calc(100vw - 2rem));max-height:calc(100vh - 2rem);overflow:auto;border:1px solid #7776;border-radius:12px;padding:1.25rem;background:var(--color-background,#202124);color:var(--color-foreground,#f8f9fa);box-shadow:0 16px 50px #0007}.ccUsageDialog::backdrop{background:#0009}.ccUsageHead,.ccUsageActions,.ccUsageBarHeading,.ccUsageDetail{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.ccUsageHead h2{font-size:1.15rem;margin:0}.ccUsageHead button{font-size:1.3rem;line-height:1}.ccUsageBody{display:grid;gap:1rem;margin:1.25rem 0}.ccUsageBody p,.ccUsagePlan{margin:0}.ccUsageNotice{opacity:.75}.ccUsageBar{display:grid;gap:.35rem}.ccUsageBar progress{width:100%;height:.55rem;accent-color:#5b8def}.ccUsageDetail{font-size:.8rem;opacity:.75;flex-wrap:wrap}.ccUsageActions{justify-content:flex-end}`
+        style.textContent = `.ccUsagePage{display:grid;gap:.75rem;justify-items:start}.ccUsagePage p{margin:0}.ccUsagePage button,.ccUsageDialog button{cursor:pointer;border:1px solid currentColor;border-radius:.5rem;padding:.4rem .8rem;background:transparent;color:inherit}.ccUsageDialog{width:min(520px,calc(100vw - 2rem));max-height:calc(100vh - 2rem);overflow:auto;border:1px solid #7776;border-radius:12px;padding:1.25rem;background:var(--color-background,#202124);color:var(--color-foreground,#f8f9fa);box-shadow:0 16px 50px #0007}.ccUsageDialog::backdrop{background:#0009}.ccUsageHead,.ccUsageActions,.ccUsageBarHeading,.ccUsageDetail{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.ccUsageHead h2{font-size:1.15rem;margin:0}.ccUsageHead button{font-size:1.3rem;line-height:1}.ccUsageBody{display:grid;gap:1rem;margin:1.25rem 0}.ccUsageBody p,.ccUsagePlan{margin:0}.ccUsageNotice{opacity:.75}.ccUsageBar{display:grid;gap:.35rem}.ccUsageBar progress{width:100%;height:.55rem;accent-color:#5b8def}.ccUsageDetail{font-size:.8rem;opacity:.75;flex-wrap:wrap}.ccUsageActions{justify-content:flex-end}.ccComposerQuota{display:inline-flex;align-items:center;gap:6px;flex:none;height:28px;padding:0 6px;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,currentColor);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer}.ccComposerQuota:hover,.ccComposerQuota[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover,#8882)}.ccComposerQuota progress{width:40px;height:4px;accent-color:var(--dsw-alias-label-secondary,#bbb)}.ccQuotaPopover[popover]{position:fixed;inset:auto;margin:0;z-index:1000;min-width:285px;max-width:calc(100vw - 16px);padding:9px 11px;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:9px;background:var(--dsw-alias-bg-layer-1,#242426);color:var(--dsw-alias-label-primary,#fff);box-shadow:0 4px 16px #0005;font-size:12px}.ccQuotaRow+.ccQuotaRow{margin-top:7px;padding-top:7px;border-top:1px solid var(--dsw-alias-border-l2,#8885)}.ccQuotaRowHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ccQuotaRowHead strong{font-weight:600}.ccQuotaRowHead time{margin-left:auto;color:var(--dsw-alias-label-tertiary,#aaa)}.ccQuotaRow progress{display:block;width:100%;height:5px;margin-top:5px;accent-color:var(--dsw-alias-brand-primary,#729aff)}.ccQuotaError{margin:7px 0 0;color:var(--dsw-alias-state-error-primary,#ef6666)}`
         document.head.append(style)
         return () => style.remove()
       })
