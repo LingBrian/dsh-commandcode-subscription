@@ -38,7 +38,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (after release):** `dsh-commandcode-subscription@0.1.11`
+- **npm (after release):** `dsh-commandcode-subscription@0.1.12`
 
 Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -47,13 +47,13 @@ Click **Install** and follow the restart prompt. The GitHub repository includes 
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # or
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.11
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.12
 ```
 
 For the Web profile with an existing CLI:
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.11
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.12
 ```
 
 To build a source archive for development or offline installation, run from the repository root:

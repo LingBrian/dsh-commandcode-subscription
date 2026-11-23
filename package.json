@@ -1,7 +1,8 @@
 {
   "name": "dsh-commandcode-subscription",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Command Code Go models for DeepSeek Harness",
+  "keywords": ["deepseek-harness", "dsh-plugin", "commandcode", "command-code", "commandcode-go", "llm", "multi-account", "usage-tracking", "vision-models"],
   "type": "module",
   "main": "./lib/index.js",
   "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./cordis.patch.yml": "./cordis.patch.yml", "./package.json": "./package.json", "./locale/*.json": "./locale/*.json" },
