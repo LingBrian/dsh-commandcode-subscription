@@ -35,7 +35,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (published):** `dsh-commandcode-subscription@0.1.0`
+- **npm (published):** `dsh-commandcode-subscription@0.1.4`
 
 Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -44,13 +44,13 @@ Click **Install** and follow the restart prompt. The GitHub repository includes 
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # or
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.0
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.4
 ```
 
 For the Web profile with an existing CLI:
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.0
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.4
 ```
 
 To build a source archive for development or offline installation, run from the repository root:
@@ -66,6 +66,12 @@ Then install the generated `.artifacts/*.tgz` as the plugin address. For npm ins
 Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or a browser request. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
 
 ## Scope and limitations
+
+### Fixes in 0.1.4
+
+- Merges developer instructions from DSH history into the upstream system prompt, fixing request preparation failures.
+- Handles multi-step Command Code streams, reused event IDs, and omitted text-end events so partial output can finish normally.
+- Distinguishes failures during request preparation, transport, and response parsing without exposing upstream error bodies or API keys.
 
 - Only the fixed `https://api.commandcode.ai` HTTPS origin receives generation requests and the key. The model catalog request needs no key. Generation is not replayed after network or stream errors; a missing finish event is an error.
 - No OAuth, account management, multi-key rotation, quota UI, image attachments, or OpenAI/Anthropic-compatible proxy. A public model listing does not guarantee access.

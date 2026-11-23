@@ -17,8 +17,9 @@ test('locale lookup defaults to English and supports Chinese tags and unknown fa
   assert.equal(normalizeLocale('zh-CN'), 'zh')
   assert.equal(normalizeLocale('ZH_hans'), 'zh')
   assert.equal(normalizeLocale('fr'), 'en')
-  assert.equal(localize(undefined, 'transportFailed'), 'Command Code request failed')
-  assert.match(localize('zh-CN', 'transportFailed'), /请求失败/)
+  assert.match(localize(undefined, 'transportFailed'), /network/i)
+  assert.match(localize('zh-CN', 'transportFailed'), /network/i)
+  assert.equal(localize(undefined, 'requestFailed'), 'Command Code request failed')
 })
 
 test('provider localizes HTTP, stream, missing-key and abort errors without reflecting secrets', async () => {
@@ -37,6 +38,10 @@ test('provider localizes HTTP, stream, missing-key and abort errors without refl
   assert.equal(await errorText(failed.streamSimple(model, context, { apiKey: key, locale: 'zh' })), localize('zh', 'transportFailed'))
   const forged = createCommandCodeProvider({ fetch: async () => { throw Object.assign(new Error('private'), { localizationKey: 'httpError', localizationParams: { status: key } }) } })
   assert.equal(await errorText(forged.streamSimple(model, context, { apiKey: key, locale: 'zh' })), localize('zh', 'transportFailed'))
+  const badRequest = createCommandCodeProvider({ fetch: async () => { throw new Error('should not fetch') } })
+  assert.equal(await errorText(badRequest.streamSimple(model, { messages: [{ role: 'unknown', content: key }] }, { apiKey: key, locale: 'zh' })), localize('zh', 'requestPreparation'))
+  const badStream = createCommandCodeProvider({ fetch: async () => ({ ok: true, body: body({ type: 'text-delta', id: 'missing', text: key }) }) })
+  assert.equal(await errorText(badStream.streamSimple(model, context, { apiKey: key, locale: 'zh' })), localize('zh', 'responseStream'))
   assert.equal(await errorText(failed.streamSimple(model, context, { locale: 'zh' })), localize('zh', 'invalidApiKey'))
   const controller = new AbortController(); controller.abort()
   assert.equal(await errorText(failed.streamSimple(model, context, { locale: 'zh', apiKey: key, signal: controller.signal })), localize('zh', 'requestAborted'))
@@ -55,6 +60,17 @@ test('adapter request locale selects missing-credential error per concurrent req
   }))
   assert.equal(outcomes[0], localize('zh', 'missingCredential'))
   assert.deepEqual(outcomes.slice(1), Array(3).fill(localize('en', 'missingCredential')))
+})
+
+test('actual PiAiAdapter classifies fetch transport failures as TRANSPORT without exposing causes', async () => {
+  const secret = 'private-network-detail-and-key'
+  const provider = createCommandCodeProvider({ fetch: async () => { throw Object.assign(new Error(secret), { code: 'ECONNRESET' }) } })
+  const adapter = createAdapter({ credentials: { resolve: async () => ({ value: 'user_fixture' }) } }, { provider })
+  const chunks = await drain(adapter.stream(request('en')))
+  const failure = chunks.find(chunk => chunk.reason?.failure)?.reason.failure
+  assert.equal(failure?.code, 'TRANSPORT', JSON.stringify(chunks))
+  assert.match(failure.message, /network/i)
+  assert.doesNotMatch(JSON.stringify(chunks), new RegExp(secret))
 })
 
 test('adapter transports use request-local locale, including prepareCall streams', async () => {

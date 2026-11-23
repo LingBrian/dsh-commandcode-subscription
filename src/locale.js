@@ -19,7 +19,11 @@ const translations = Object.freeze({
     invalidChunk: 'Invalid Command Code response chunk',
     bodyLimit: 'Command Code response exceeds body limit',
     lineLimit: 'Command Code line exceeds limit',
-    transportFailed: 'Command Code request failed',
+    transportFailed: 'Command Code network transport failed (details hidden)',
+    requestFailed: 'Command Code request failed',
+    requestPreparation: 'Command Code could not prepare the request',
+    upstreamRequest: 'Command Code upstream request failed',
+    responseStream: 'Command Code response could not be processed',
   }),
   zh: Object.freeze({
     missingCredential: '缺少 Command Code API key；请在 DSH 凭证中配置 COMMANDCODE_API_KEY',
@@ -38,7 +42,11 @@ const translations = Object.freeze({
     invalidChunk: '无效的 Command Code 响应数据块',
     bodyLimit: 'Command Code 响应超过大小限制',
     lineLimit: 'Command Code 数据行超过大小限制',
-    transportFailed: 'Command Code 请求失败',
+    transportFailed: 'Command Code 网络传输失败（Network transport failure；详细信息已隐藏）',
+    requestFailed: 'Command Code 请求失败',
+    requestPreparation: 'Command Code 无法构造请求',
+    upstreamRequest: 'Command Code 上游请求失败',
+    responseStream: 'Command Code 响应无法解析',
   }),
 })
 
@@ -61,9 +69,9 @@ export function localizedError(locale, key, params) {
   trustedErrors.set(error, { key, params })
   return error
 }
-export function safeErrorMessage(locale, error) {
+export function safeErrorMessage(locale, error, stage = 'requestFailed') {
   const trusted = error instanceof Error ? trustedErrors.get(error) : undefined
-  return trusted ? localize(locale, trusted.key, trusted.params) : localize(locale, 'transportFailed')
+  return trusted ? localize(locale, trusted.key, trusted.params) : localize(locale, stage)
 }
 // Async iterator steps must each enter their own context: consumers resume generators
 // from different async contexts, and concurrent requests must not share a locale.

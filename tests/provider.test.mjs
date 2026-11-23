@@ -32,6 +32,7 @@ test('native request conversion and split NDJSON tool sequence', async () => {
     { type: 'tool-input-delta', id: 'call', delta: '{"message":' },
     { type: 'tool-input-delta', id: 'call', delta: '"yes"}' },
     { type: 'tool-input-end', id: 'call' },
+    { type: 'tool-call', id: 'call', toolName: 'echo', input: { message: 'yes' } },
     { type: 'finish', finishReason: 'tool-calls', usage: { inputTokens: 21, cachedInputTokens: 4, outputTokens: 3 } },
   ], (url, init) => {
     calls++
@@ -66,6 +67,24 @@ test('reasoning chunks and cancellation are propagated without retries', async (
   const events = await drain(canceled.streamSimple(model, context, { apiKey: 'user_test', signal: controller.signal }))
   assert.equal(requests, 0)
   assert.equal(events.at(-1).reason, 'aborted')
+})
+
+test('multi-step stream accepts reused ids and implicit text end', async () => {
+  const provider = createCommandCodeProvider({ fetch: makeFetch([
+    { type: 'start-step' },
+    { type: 'text-start', id: 'text-0' },
+    { type: 'text-delta', id: 'text-0', text: 'first' },
+    { type: 'finish-step', finishReason: 'stop', usage: { inputTokens: 3, outputTokens: 1 } },
+    { type: 'start-step' },
+    { type: 'text-start', id: 'text-0' },
+    { type: 'text-delta', id: 'text-0', text: 'second' },
+    { type: 'text-end', id: 'text-0' },
+    { type: 'finish', finishReason: 'stop' },
+  ]) })
+  const events = await drain(provider.streamSimple(model, context, { apiKey: 'user_test' }))
+  const done = events.find(event => event.type === 'done')
+  assert.deepEqual(done.message.content.map(part => part.text), ['first', 'second'])
+  assert.equal(done.message.usage.input, 3)
 })
 
 test('truncation and malformed tool input fail without replay', async () => {

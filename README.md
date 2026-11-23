@@ -35,7 +35,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（已发布）**：`dsh-commandcode-subscription@0.1.0`
+- **npm（已发布）**：`dsh-commandcode-subscription@0.1.4`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -44,13 +44,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.0
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.4
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.0
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.4
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：
@@ -66,6 +66,12 @@ pnpm pack --pack-destination .artifacts
 在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
 
 ## 使用与限制
+
+### 0.1.4 修复
+
+- 将 DSH 历史中的开发者指令并入上游系统提示词，修复对话开始前的请求构造错误。
+- 接受 Command Code 多步骤响应、复用事件 ID 和省略文本结束事件的流，修复输出部分内容后中断的问题。
+- 失败信息按请求构造、网络请求和响应解析阶段区分；不回显上游错误正文或 API Key。
 
 - 仅向固定的 `https://api.commandcode.ai` HTTPS 源站发送生成请求和凭证。模型目录请求无需 Key。网络或流失败后不自动重放生成请求；缺少终止事件会报错。
 - 尚不支持 OAuth、账户管理、多 Key 轮换、额度界面、图片附件或 OpenAI/Anthropic 兼容代理；不承诺某个公开模型一定可用。

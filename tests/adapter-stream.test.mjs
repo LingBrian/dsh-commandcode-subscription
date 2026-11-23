@@ -26,8 +26,15 @@ test('real DSH adapter translates provider NDJSON into host stream', async () =>
   const ctx = { credentials: { async resolve() { return { value: 'user_fixture' } } } }
   const adapter = createAdapter(ctx, { provider })
   const events = []
-  for await (const event of adapter.stream({ provider: PROVIDER, model, messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }] })) events.push(event)
+  for await (const event of adapter.stream({ provider: PROVIDER, model, messages: [
+    { role: 'user', content: [{ type: 'text', text: 'first' }] },
+    { role: 'developer', content: [{ type: 'text', text: 'answer briefly' }] },
+    { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+  ] })) events.push(event)
   assert.equal(request.headers.Authorization, 'Bearer user_fixture')
+  const payload = JSON.parse(request.body)
+  assert.match(payload.params.system, /answer briefly/)
+  assert.deepEqual(payload.params.messages.map(message => message.role), ['user', 'user'])
   assert.ok(events.some(event => JSON.stringify(event).includes('reply')))
   assert.doesNotMatch(JSON.stringify(events), /user_fixture/)
 })
