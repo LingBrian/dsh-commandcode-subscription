@@ -3,7 +3,18 @@
 // figures cross the authenticated DSH connection.
 const ORIGIN = 'https://api.commandcode.ai'
 const PATHS = ['/alpha/whoami', '/alpha/usage/summary', '/alpha/billing/credits', '/alpha/billing/subscriptions']
+const PLANS = { 'individual-go': 'Go', 'individual-goat': 'GOAT', 'individual-pro-v1': 'Pro',
+  'individual-pro': 'Pro', 'individual-provider': 'Provider', 'individual-max': 'Max',
+  'individual-ultra': 'Ultra', 'teams-pro': 'Teams Pro' }
+const planName = id => {
+  if (typeof id !== 'string') return undefined
+  const normalized = id.toLowerCase().replace(/_/gu, '-')
+  const prefix = Object.keys(PLANS).sort((left, right) => right.length - left.length).find(key => normalized.startsWith(key))
+  return prefix ? PLANS[prefix] : id
+}
 const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : undefined
+const accountName = user => [user?.userName, user?.name, user?.id]
+  .find(value => typeof value === 'string' && value.trim())?.replace(/[\p{Cc}\p{Cf}]/gu, '').trim().slice(0, 80)
 const number = value => (typeof value === 'number' || typeof value === 'string' && value.trim() !== '') && Number.isFinite(Number(value)) ? Number(value) : undefined
 const stamp = value => {
   const raw = number(value)
@@ -49,6 +60,14 @@ async function read(path, key, signal, fetchImpl) {
   }
 }
 
+/** Validate an entered key without sending identity fields to the browser. */
+export async function identifyCommandCodeAccount(key, { signal, fetchImpl = fetch } = {}) {
+  const result = await read(PATHS[0], key, signal, fetchImpl)
+  if (!result.body) return { ok: false, error: result.status === 401 || result.status === 403 ? 'invalid-key' : 'unavailable' }
+  const user = record(result.body.user)
+  return { ok: true, label: accountName(user) || 'Command Code account' }
+}
+
 export async function fetchCommandCodeUsage(key, { signal, fetchImpl = fetch } = {}) {
   if (typeof key !== 'string' || !key.trim()) return { ok: false, error: 'missing-key' }
   const whoamiRequest = read(PATHS[0], key, signal, fetchImpl)
@@ -73,7 +92,8 @@ export async function fetchCommandCodeUsage(key, { signal, fetchImpl = fetch } =
   const monthlyTotal = monthly !== undefined && monthlyUsed !== undefined ? monthly + monthlyUsed : undefined
   return { ok: true, value: {
     fetchedAt: Date.now(),
-    plan: typeof plan?.planId === 'string' ? plan.planId : typeof credit?.planId === 'string' ? credit.planId : undefined,
+    ...(accountName(record(whoami.body?.user)) ? { account: accountName(record(whoami.body?.user)) } : {}),
+    plan: planName(plan?.planId ?? credit?.planId),
     periodEnd: stamp(plan?.currentPeriodEnd),
     windows: { fiveHour: normalizeWindow(limits?.fiveHour), weekly: normalizeWindow(limits?.weekly) },
     credits: {

@@ -25,7 +25,7 @@ The DSH credential service manages your Command Code API key. The plugin connect
 | Model settings | When a Command Code model is selected, a gear beside the composer opens model search, verified reasoning levels, and catalog-listed Standard/Fast/Ultrafast model variants. The selected reasoning level is sent with generation requests. |
 | Streaming | Converts native NDJSON into DSH text, reasoning, tool-call, and tool-result events; supports cancellation. |
 | Image understanding | Enables DSH image attachments for models known to accept image input and sends bounded image data in the native request. |
-| Credentials | Resolves `COMMANDCODE_API_KEY` through DSH's host credential service. The key is never saved in plugin settings or sent to the browser. |
+| Credentials and accounts | A dedicated **Command Code accounts** page in DSH settings adds, selects, and logs out multiple API keys. Keys live in DSH's host credential records; an existing `COMMANDCODE_API_KEY` is imported as the first account. |
 | Usage | Opens a plugin usage dialog. With a Command Code model selected, the composer shows a 5h quota strip; hover to see 5h, 1w, and 1m quota bars, refreshed every 30 seconds. Percentages appear only when the provider reports a cap. |
 | Languages | Runtime message dictionaries for English and Simplified Chinese; resolves a request-provided locale and falls back to English for missing or unsupported locales. More languages can be added through the same dictionary framework. |
 
@@ -38,7 +38,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (after release):** `dsh-commandcode-subscription@0.1.10`
+- **npm (after release):** `dsh-commandcode-subscription@0.1.11`
 
 Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -47,13 +47,13 @@ Click **Install** and follow the restart prompt. The GitHub repository includes 
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # or
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.10
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.11
 ```
 
 For the Web profile with an existing CLI:
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.10
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.11
 ```
 
 To build a source archive for development or offline installation, run from the repository root:
@@ -66,7 +66,9 @@ pnpm pack --pack-destination .artifacts
 
 Then install the generated `.artifacts/*.tgz` as the plugin address. For npm installs, use a version that has been published.
 
-Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or a browser request. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
+Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or another website. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
+
+**Multiple accounts:** Open the dedicated **Command Code accounts** section in DSH settings. Click **Log in**, enter a Command Code API key, and save it. The plugin verifies the key with Command Code before storing it in a DSH credential record. Each card shows the account and plan above 5h, 1w, and 1m remaining quota bars. Use its checkbox to choose the active conversation account. **Log out** removes the active account and selects another saved account when available. The visible page polls every 30 seconds and supports manual refresh. An existing `COMMANDCODE_API_KEY` is imported on the first add; after all accounts are logged out, that legacy key is not automatically reactivated. A newly entered key passes through the authenticated DSH connection to the host and is not saved in browser storage. Up to 10 accounts can be stored.
 
 **View usage:** Open **Command Code usage** in plugin settings and select **View usage**. The host reads Command Code account endpoints on demand; the API key never reaches the browser. You can refresh the dialog. If some endpoints fail, the available data remains visible with a partial-data notice. Consult your Command Code account for authoritative billing.
 

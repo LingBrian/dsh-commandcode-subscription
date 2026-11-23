@@ -1,6 +1,6 @@
 {
   "name": "dsh-commandcode-subscription",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Command Code Go models for DeepSeek Harness",
   "type": "module",
   "main": "./lib/index.js",

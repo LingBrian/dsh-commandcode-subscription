@@ -24,11 +24,12 @@ test('web client registers its usage page in DSH plugin settings', async () => {
     slots: { inject(_name, callback) { callback() }, register(config, component) { registered.push({ config, component }) } },
     effect() {},
   })
-  assert.deepEqual(registered.map(item => item.config.name), ['conversation.input.right', 'conversation.input.right', 'settings.plugins.tab', 'plugins.bundle.config', 'plugins.row.config'])
-  assert.equal(registered[0].config.id, 'commandcode-subscription-quota')
-  assert.equal(registered[1].config.id, 'commandcode-subscription-model-options')
-  assert.equal(registered[3].config.key, 'dsh-commandcode-subscription')
-  assert.equal(registered[4].config.key, 'dsh-commandcode-subscription#commandcode-subscription')
+  assert.deepEqual(registered.map(item => item.config.name), ['settings.section', 'conversation.input.right', 'conversation.input.right', 'settings.plugins.tab', 'plugins.bundle.config', 'plugins.row.config'])
+  assert.equal(registered[0].config.id, 'commandcode-subscription')
+  assert.equal(registered[1].config.id, 'commandcode-subscription-quota')
+  assert.equal(registered[2].config.id, 'commandcode-subscription-model-options')
+  assert.equal(registered[4].config.key, 'dsh-commandcode-subscription')
+  assert.equal(registered[5].config.key, 'dsh-commandcode-subscription#commandcode-subscription')
 })
 
 test('composer quota maps 5h, 1w, 1m and polls every 30 seconds without overlap', async () => {

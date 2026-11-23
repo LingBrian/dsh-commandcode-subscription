@@ -7,7 +7,7 @@ test('usage report normalizes windows, monthly balance, and partial failures wit
   const calls = []
   const fetchImpl = async (url, init) => {
     calls.push({ url, init })
-    if (url.endsWith('/alpha/whoami')) return Response.json({ user: { email: 'private@example.com' }, org: { id: 'org 1' } })
+    if (url.endsWith('/alpha/whoami')) return Response.json({ user: { userName: 'Visible account', email: 'private@example.com' }, org: { id: 'org 1' } })
     if (url.endsWith('/alpha/usage/summary')) return Response.json({ totalCount: 12, totalMonthlyCredits: 4 })
     if (url.endsWith('/alpha/billing/credits')) return Response.json({ credits: { monthlyCredits: 6, purchasedCredits: 3 }, windowLimits: { fiveHour: { used: 2, cap: 8, resetAt: 1800000000000 }, weekly: { used: 1 } } })
     return new Response('unavailable', { status: 503 })
@@ -15,6 +15,7 @@ test('usage report normalizes windows, monthly balance, and partial failures wit
   const result = await fetchCommandCodeUsage('user_secret', { fetchImpl })
   assert.equal(result.ok, true)
   assert.equal(result.value.windows.fiveHour.remainingPercent, 75)
+  assert.equal(result.value.account, 'Visible account')
   assert.equal(result.value.windows.weekly.remainingPercent, undefined)
   assert.equal(result.value.credits.monthlyRemainingPercent, 60)
   assert.equal(result.value.partial, true)

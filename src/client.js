@@ -14,6 +14,10 @@ window.__ModuleLoader__.load({
       purchased: '购买额度余额', free: '免费额度余额', requests: '请求数', tokens: 'Token 数', reset: '重置时间', unknown: '服务商未提供额度上限',
       modelSettings: '模型设置', model: '模型', effort: '思考等级', speed: '速度', standard: '标准', fast: '快速', ultrafast: '极速',
       providerDefault: '模型默认', back: '返回', searchModels: '搜索模型', noMatch: '没有匹配的模型', selectFailed: '切换模型失败，请重试。',
+      accounts: 'Command Code 账户', login: '登录', logout: '登出', active: '当前使用', addKey: '添加 API Key', keyHint: '输入 Command Code API Key',
+      add: '保存并使用', cancel: '取消', confirmLogout: '确认登出', noAccounts: '尚未添加账户', accountLoading: '正在读取账户…',
+      accountFailed: '账户操作失败，请重试。', duplicate: '这个 API Key 已存在。', tooMany: '最多保存 10 个账户。',
+      planUnknown: '订阅类型未知', refreshAccounts: '刷新用量',
     } : {
       title: 'Command Code usage', summary: 'View account quotas and usage', open: 'View usage', close: 'Close', refresh: 'Refresh', loading: 'Loading usage…',
       missing: 'Configure COMMANDCODE_API_KEY in the DSH credential manager first.', invalid: 'API key is invalid or cannot read usage.', unavailable: 'Usage is unavailable. Try again later.', timeout: 'Usage request timed out. Please retry.',
@@ -21,6 +25,10 @@ window.__ModuleLoader__.load({
       purchased: 'Purchased credits', free: 'Free credits', requests: 'Requests', tokens: 'Tokens', reset: 'Resets', unknown: 'No limit reported by provider',
       modelSettings: 'Model settings', model: 'Model', effort: 'Reasoning effort', speed: 'Speed', standard: 'Standard', fast: 'Fast', ultrafast: 'Ultrafast',
       providerDefault: 'Model default', back: 'Back', searchModels: 'Search models', noMatch: 'No matching models', selectFailed: 'Could not switch model. Try again.',
+      accounts: 'Command Code accounts', login: 'Log in', logout: 'Log out', active: 'Active', addKey: 'Add API key', keyHint: 'Enter Command Code API key',
+      add: 'Save and use', cancel: 'Cancel', confirmLogout: 'Confirm logout', noAccounts: 'No accounts added', accountLoading: 'Loading accounts…',
+      accountFailed: 'Account operation failed. Try again.', duplicate: 'This API key is already saved.', tooMany: 'Up to 10 accounts can be saved.',
+      planUnknown: 'Plan unavailable', refreshAccounts: 'Refresh usage',
     }
     const format = number => Number(number).toLocaleString(zh ? 'zh-CN' : 'en-US', { maximumFractionDigits: 3 })
     const date = value => new Date(value).toLocaleString(zh ? 'zh-CN' : 'en-US')
@@ -33,6 +41,17 @@ window.__ModuleLoader__.load({
         return await Promise.race([
           Promise.resolve().then(() => rpc.call('/api', 'commandcode-subscription/usage', {}, controller.signal)),
           new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('usage-timeout')) }, timeoutMs) }),
+        ])
+      } finally { clearTimeout(timer) }
+    }
+
+    async function callAccounts(rpc, payload, timeoutMs = 35_000) {
+      const controller = new AbortController()
+      let timer
+      try {
+        return await Promise.race([
+          Promise.resolve().then(() => rpc.call('/api', 'commandcode-subscription/accounts', payload, controller.signal)),
+          new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('account-timeout')) }, timeoutMs) }),
         ])
       } finally { clearTimeout(timer) }
     }
@@ -184,7 +203,9 @@ window.__ModuleLoader__.load({
         const wake = () => { if (document.visibilityState !== 'hidden') void poller.refresh() }
         poller.start()
         document.addEventListener('visibilitychange', wake)
-        return () => { poller.stop(); document.removeEventListener('visibilitychange', wake) }
+        window.addEventListener('commandcode-subscription:account-changed', wake)
+        return () => { poller.stop(); document.removeEventListener('visibilitychange', wake)
+          window.removeEventListener('commandcode-subscription:account-changed', wake) }
       }, [enabled, rpc])
       React.useEffect(() => { dismiss() }, [model?.provider, model?.model])
       React.useEffect(() => () => clearTimeout(dismissTimer.current), [])
@@ -297,6 +318,98 @@ window.__ModuleLoader__.load({
         h('button', { type: 'button', onClick: () => setOpen(true) }, copy.open),
         open ? h(UsageDialog, { rpc, close: () => setOpen(false) }) : null)
     }
+
+    function AccountsPage({ rpc }) {
+      const [status, setStatus] = React.useState({ accounts: [], activeId: null, loading: true })
+      const [entries, setEntries] = React.useState({})
+      const [key, setKey] = React.useState('')
+      const [adding, setAdding] = React.useState(false)
+      const [confirm, setConfirm] = React.useState(false)
+      const [busy, setBusy] = React.useState(false)
+      const [error, setError] = React.useState('')
+      const live = React.useRef(true)
+      const flight = React.useRef(false)
+      const generation = React.useRef(0)
+      const refresh = async () => {
+        if (!live.current || flight.current || document.visibilityState === 'hidden') return
+        flight.current = true
+        const version = generation.current
+        try {
+          const accounts = await callAccounts(rpc, { action: 'status' })
+          if (!accounts?.ok) throw new Error(accounts?.error)
+          if (live.current && version === generation.current) setStatus({ ...accounts.value, loading: false })
+          const usage = accounts.value.accounts.length ? await callAccounts(rpc, { action: 'usage' }) : { ok: true, value: [] }
+          if (!usage?.ok) throw new Error(usage?.error)
+          if (live.current && version === generation.current) {
+            setEntries(Object.fromEntries(usage.value.map(entry => [entry.id, entry])))
+            setError('')
+          }
+        } catch {
+          if (live.current && version === generation.current) {
+            setStatus(previous => ({ ...previous, loading: false }))
+            setError(copy.accountFailed)
+          }
+        } finally { flight.current = false }
+      }
+      React.useEffect(() => {
+        live.current = true
+        void refresh()
+        const timer = setInterval(() => void refresh(), QUOTA_REFRESH_MS)
+        const wake = () => { if (document.visibilityState !== 'hidden') void refresh() }
+        document.addEventListener('visibilitychange', wake)
+        return () => { live.current = false; generation.current++; clearInterval(timer); document.removeEventListener('visibilitychange', wake) }
+      }, [rpc])
+      const change = async payload => {
+        setBusy(true); setError('')
+        try {
+          const result = await callAccounts(rpc, payload)
+          if (!result?.ok) throw new Error(result?.error)
+          generation.current++
+          setStatus({ ...result.value, loading: false })
+          setEntries({})
+          window.dispatchEvent(new Event('commandcode-subscription:account-changed'))
+          setAdding(false); setConfirm(false); setKey('')
+          // A previous slow quota read may still be in flight; refresh again
+          // once it settles, while the next 30-second tick remains a fallback.
+          const retry = () => { if (!live.current) return; if (flight.current) setTimeout(retry, 100); else void refresh() }
+          retry()
+        } catch (cause) {
+          setError(cause?.message === 'duplicate' ? copy.duplicate : cause?.message === 'too-many' ? copy.tooMany
+            : cause?.message === 'invalid-key' ? copy.invalid : copy.accountFailed)
+        } finally { setBusy(false) }
+      }
+      return h('section', { className: 'ccAccountsPage' },
+        h('div', { className: 'ccAccountsHeader' }, h('h2', null, copy.accounts),
+          h('div', { className: 'ccAccountsActions' },
+            h('button', { type: 'button', disabled: busy, onClick: () => { setAdding(true); setConfirm(false) } }, copy.login),
+            status.accounts.length ? h('button', { type: 'button', disabled: busy, onClick: () => { setConfirm(true); setAdding(false) } }, copy.logout) : null,
+            h('button', { type: 'button', disabled: busy, onClick: () => void refresh() }, copy.refreshAccounts))),
+        adding ? h('form', { className: 'ccAccountsForm', onSubmit: event => { event.preventDefault(); if (key.trim()) void change({ action: 'add', key: key.trim() }) } },
+          h('label', null, copy.addKey, h('input', { type: 'password', value: key, autoComplete: 'off', spellCheck: false,
+            placeholder: copy.keyHint, onChange: event => setKey(event.target.value) })),
+          h('button', { type: 'submit', disabled: busy || !key.trim() }, copy.add),
+          h('button', { type: 'button', onClick: () => { setAdding(false); setKey('') } }, copy.cancel)) : null,
+        confirm ? h('div', { className: 'ccAccountsConfirm' },
+          h('button', { type: 'button', disabled: busy, onClick: () => void change({ action: 'logout' }) }, copy.confirmLogout),
+          h('button', { type: 'button', onClick: () => setConfirm(false) }, copy.cancel)) : null,
+        error ? h('p', { role: 'alert', className: 'ccAccountError' }, error) : null,
+        status.loading ? h('p', null, copy.accountLoading) : status.accounts.length === 0 ? h('p', null, copy.noAccounts) :
+          h('div', { className: 'ccAccountCards' }, status.accounts.map(account => {
+            const entry = entries[account.id]
+            const rows = quotaRows(entry?.value)
+            return h('article', { key: account.id, className: 'ccAccountCard', 'data-active': account.active },
+              h('div', { className: 'ccAccountIdentity' },
+                h('input', { type: 'checkbox', checked: account.active, disabled: busy, 'aria-label': `${copy.active}: ${account.label}`,
+                  onChange: () => { if (!account.active) void change({ action: 'select', id: account.id }) } }),
+                h('strong', null, entry?.value?.account ?? account.label), h('span', null, entry?.value?.plan ?? copy.planUnknown),
+                account.active ? h('small', null, copy.active) : null),
+              h('div', { className: 'ccAccountQuotas' }, rows.map(row => h('div', { key: row.id, className: 'ccAccountQuota' },
+                h('span', null, row.id), h('progress', { max: 100, ...(row.percent === undefined ? {} : { value: row.percent }),
+                  'aria-label': `${row.label}: ${row.percent === undefined ? copy.unknown : `${row.percent}% ${copy.remaining}`}` }),
+                h('span', null, row.percent === undefined ? '—' : `${row.percent}%`)))),
+              entry?.error ? h('p', { className: 'ccAccountError' }, entry.error === 'invalid-key' ? copy.invalid : copy.unavailable) : null)
+          })))
+    }
     module.exports.inject = ['slots', 'connection', 'modelDirectories']
     module.exports.__internals = { callUsage, quotaRows, createQuotaPoller, speedChoices, QUOTA_REFRESH_MS }
     module.exports.apply = ctx => {
@@ -308,6 +421,10 @@ window.__ModuleLoader__.load({
         return () => { scopedDirectories = undefined }
       }))
       const page = props => h(Page, { ...props, rpc })
+      const accountsPage = props => h(AccountsPage, { ...props, rpc })
+      ctx.slots.inject('settings.section', () => ctx.slots.register({
+        name: 'settings.section', id: 'commandcode-subscription', order: 16, label: () => copy.accounts,
+      }, accountsPage))
       ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
         name: 'conversation.input.right', id: 'commandcode-subscription-quota', order: 16,
         inject: sessionId => ({ rpc, directory: (scopedDirectories ?? rootDirectories).directoryFor(sessionId).store }),
@@ -325,6 +442,7 @@ window.__ModuleLoader__.load({
         const style = document.createElement('style')
         style.textContent = `.ccUsagePage{display:grid;gap:.75rem;justify-items:start}.ccUsagePage p{margin:0}.ccUsagePage button,.ccUsageDialog button{cursor:pointer;border:1px solid currentColor;border-radius:.5rem;padding:.4rem .8rem;background:transparent;color:inherit}.ccUsageDialog{width:min(520px,calc(100vw - 2rem));max-height:calc(100vh - 2rem);overflow:auto;border:1px solid #7776;border-radius:12px;padding:1.25rem;background:var(--color-background,#202124);color:var(--color-foreground,#f8f9fa);box-shadow:0 16px 50px #0007}.ccUsageDialog::backdrop{background:#0009}.ccUsageHead,.ccUsageActions,.ccUsageBarHeading,.ccUsageDetail{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.ccUsageHead h2{font-size:1.15rem;margin:0}.ccUsageHead button{font-size:1.3rem;line-height:1}.ccUsageBody{display:grid;gap:1rem;margin:1.25rem 0}.ccUsageBody p,.ccUsagePlan{margin:0}.ccUsageNotice{opacity:.75}.ccUsageBar{display:grid;gap:.35rem}.ccUsageBar progress{width:100%;height:.55rem;accent-color:#5b8def}.ccUsageDetail{font-size:.8rem;opacity:.75;flex-wrap:wrap}.ccUsageActions{justify-content:flex-end}.ccComposerQuota{display:inline-flex;align-items:center;gap:6px;flex:none;height:28px;padding:0 6px;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,currentColor);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer}.ccComposerQuota:hover,.ccComposerQuota[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover,#8882)}.ccComposerQuota progress{width:40px;height:4px;accent-color:var(--dsw-alias-label-secondary,#bbb)}.ccQuotaPopover[popover]{position:fixed;inset:auto;margin:0;z-index:1000;min-width:285px;max-width:calc(100vw - 16px);padding:9px 11px;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:9px;background:var(--dsw-alias-bg-layer-1,#242426);color:var(--dsw-alias-label-primary,#fff);box-shadow:0 4px 16px #0005;font-size:12px}.ccQuotaRow+.ccQuotaRow{margin-top:7px;padding-top:7px;border-top:1px solid var(--dsw-alias-border-l2,#8885)}.ccQuotaRowHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ccQuotaRowHead strong{font-weight:600}.ccQuotaRowHead time{margin-left:auto;color:var(--dsw-alias-label-tertiary,#aaa)}.ccQuotaRow progress{display:block;width:100%;height:5px;margin-top:5px;accent-color:var(--dsw-alias-brand-primary,#729aff)}.ccQuotaError{margin:7px 0 0;color:var(--dsw-alias-state-error-primary,#ef6666)}`
         style.textContent += `.ccComposerModelSettings{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,currentColor);font-size:16px;cursor:pointer}.ccComposerModelSettings:hover,.ccComposerModelSettings[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover,#8882)}.ccModelMenu[popover]{position:fixed;inset:auto;margin:0;z-index:1000;width:280px;max-width:calc(100vw - 16px);max-height:min(420px,70vh);overflow:auto;padding:5px;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:10px;background:var(--dsw-alias-bg-layer-1,#242426);color:var(--dsw-alias-label-primary,#fff);box-shadow:0 6px 20px #0005;font-size:13px}.ccModelCell,.ccModelChoice,.ccModelBack{display:flex;align-items:center;gap:10px;width:100%;min-height:33px;padding:7px 9px;border:0;border-radius:7px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}.ccModelCell:hover,.ccModelChoice:hover,.ccModelBack:hover{background:var(--dsw-alias-interactive-bg-hover,#8882)}.ccModelCell>span:first-child,.ccModelChoice>span:first-child{flex:1}.ccModelCellValue{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary,#bbb)}.ccModelBack{border-bottom:1px solid var(--dsw-alias-border-l2,#8885);border-radius:0}.ccModelSearch{box-sizing:border-box;width:calc(100% - 12px);margin:7px 6px;padding:7px;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:6px;background:transparent;color:inherit;font:inherit}.ccModelMenu p{margin:8px}.ccModelError{color:var(--dsw-alias-state-error-primary,#ef6666)}`
+        style.textContent += `.ccAccountsPage{display:grid;gap:16px;max-width:900px;padding:8px 2px;color:inherit}.ccAccountsHeader,.ccAccountsActions,.ccAccountIdentity,.ccAccountsForm,.ccAccountsConfirm{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ccAccountsHeader{justify-content:space-between}.ccAccountsHeader h2{margin:0;font-size:18px}.ccAccountsPage button{cursor:pointer;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:7px;padding:7px 11px;background:transparent;color:inherit;font:inherit}.ccAccountsPage button:disabled{opacity:.5;cursor:default}.ccAccountsForm label{display:grid;gap:5px;flex:1;min-width:230px}.ccAccountsForm input{box-sizing:border-box;width:100%;padding:8px;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:7px;background:transparent;color:inherit;font:inherit}.ccAccountCards{display:grid;gap:12px}.ccAccountCard{display:grid;gap:12px;padding:14px;border:1px solid var(--dsw-alias-border-l2,#8885);border-radius:10px;background:var(--dsw-alias-bg-layer-1,#8881)}.ccAccountCard[data-active=true]{border-color:var(--dsw-alias-brand-primary,#729aff)}.ccAccountIdentity strong{font-size:14px}.ccAccountIdentity span{color:var(--dsw-alias-label-secondary,#aaa)}.ccAccountIdentity small{margin-left:auto}.ccAccountQuotas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.ccAccountQuota{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:7px;font-size:12px}.ccAccountQuota progress{width:100%;height:7px;accent-color:var(--dsw-alias-brand-primary,#729aff)}.ccAccountError{margin:0;color:var(--dsw-alias-state-error-primary,#ef6666)}@media(max-width:620px){.ccAccountQuotas{grid-template-columns:1fr}}`
         document.head.append(style)
         return () => style.remove()
       })

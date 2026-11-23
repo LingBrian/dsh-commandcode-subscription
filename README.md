@@ -25,7 +25,7 @@
 | 模型设置 | 选择 Command Code 模型后，输入框右侧的齿轮弹层提供模型搜索、已核实模型的思考等级，以及目录中可用的标准／快速／极速模型变体。思考等级会随生成请求传给 Command Code。 |
 | 流式输出 | 将原生 NDJSON 转成 DSH 文本、推理、工具调用和工具结果事件；支持取消。 |
 | 图片理解 | 对已知支持图片的模型开放 DSH 图片附件，并将受限大小的图片转为原生请求内容。 |
-| 凭证 | 从 DSH 宿主凭证服务解析 `COMMANDCODE_API_KEY`；密钥不保存在插件配置或浏览器中。 |
+| 凭证与多账户 | 在 DSH 设置中单独的 **Command Code 账户** 页面添加多个 API Key、切换当前账户或登出。Key 保存在 DSH 宿主凭证记录中；原有 `COMMANDCODE_API_KEY` 首次作为账户导入。 |
 | 用量查询 | 在插件设置中打开用量对话框；选择 Command Code 模型时，输入框右侧显示 5h 额度小条，悬浮可查看 5h、1w、1m 额度和进度条，每 30 秒刷新。仅在服务商返回额度上限时计算百分比。 |
 | 语言 | 英文与简体中文的运行时提示词典；按请求提供的 locale 解析，未提供或不支持时回退英文。无需改动词典框架即可增加其他语言。 |
 
@@ -38,7 +38,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（发布后）**：`dsh-commandcode-subscription@0.1.10`
+- **npm（发布后）**：`dsh-commandcode-subscription@0.1.11`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -47,13 +47,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.10
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.11
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.10
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.11
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：
@@ -66,7 +66,9 @@ pnpm pack --pack-destination .artifacts
 
 再将生成的 `.artifacts/*.tgz` 作为插件地址安装。npm 安装地址使用已发布的版本号。
 
-在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
+在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或其他网站。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
+
+**多账户：**打开 DSH 设置中的 **Command Code 账户** 独立页面。点击 **登录**，输入 Command Code API Key 并保存；插件会先向 Command Code 验证，再将 Key 写入 DSH 凭证记录。每张账户卡第一行显示账号与订阅类型，第二行显示 5h、1w、1m 的剩余额度进度条。点击卡片左侧复选框切换当前对话账户；顶部 **登出** 会移除当前账户，并在尚有其他账户时自动选择下一账户。页面可手动刷新，且在可见时每 30 秒查询一次。原有 `COMMANDCODE_API_KEY` 在首次添加新账户时一并导入；登出所有账户后不会自动重新启用该旧 Key。新输入的 Key 只经由 DSH 连接提交给宿主，不会写入浏览器持久存储。一个插件配置最多保存 10 个账户。
 
 **查看用量：**在插件设置中找到 **Command Code 用量**，点击 **查看用量**。对话框按需通过 DSH 宿主读取 Command Code 账户接口；API Key 不会发送到浏览器。可刷新当前用量。部分接口失败时仍显示已获得的数据，并标注数据不完整。额度单位和计费以 Command Code 账户页面为准。
 

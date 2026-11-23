@@ -8,7 +8,7 @@ const load = path => readFile(new URL(path, root), 'utf8')
 test('GitHub install ships built entry without lifecycle scripts', async () => {
   const pkg = JSON.parse(await load('package.json'))
   assert.equal(pkg.scripts.prepare, undefined)
-  for (const file of ['index.js', 'credential.js', 'commandcode-provider.js', 'locale.js', 'usage.js', 'usage-transport.js', 'client.js']) {
+  for (const file of ['index.js', 'credential.js', 'accounts.js', 'commandcode-provider.js', 'locale.js', 'usage.js', 'usage-transport.js', 'client.js']) {
     assert.equal(await load(`lib/${file}`), await load(`src/${file}`))
   }
   assert.equal(pkg.exports['./client'], './lib/client.js')
