@@ -9,18 +9,28 @@ window.__ModuleLoader__.load({
     const zh = (navigator.language || '').toLowerCase().startsWith('zh')
     const copy = zh ? {
       title: 'Command Code 用量', summary: '查看账户额度和用量', open: '查看用量', close: '关闭', refresh: '刷新', loading: '正在读取用量…',
-      missing: '请先在 DSH 凭证管理器配置 COMMANDCODE_API_KEY。', invalid: 'API Key 无效或无权查询用量。', unavailable: '用量查询失败，请稍后重试。',
+      missing: '请先在 DSH 凭证管理器配置 COMMANDCODE_API_KEY。', invalid: 'API Key 无效或无权查询用量。', unavailable: '用量查询失败，请稍后重试。', timeout: '用量查询超时，请重试。',
       partial: '部分数据暂不可用，以下为已读取的用量。', remaining: '剩余', fiveHour: '5 小时额度', weekly: '每周额度', monthly: '每月额度',
       purchased: '购买额度余额', free: '免费额度余额', requests: '请求数', tokens: 'Token 数', reset: '重置时间', unknown: '服务商未提供额度上限',
     } : {
       title: 'Command Code usage', summary: 'View account quotas and usage', open: 'View usage', close: 'Close', refresh: 'Refresh', loading: 'Loading usage…',
-      missing: 'Configure COMMANDCODE_API_KEY in the DSH credential manager first.', invalid: 'API key is invalid or cannot read usage.', unavailable: 'Usage is unavailable. Try again later.',
+      missing: 'Configure COMMANDCODE_API_KEY in the DSH credential manager first.', invalid: 'API key is invalid or cannot read usage.', unavailable: 'Usage is unavailable. Try again later.', timeout: 'Usage request timed out. Please retry.',
       partial: 'Some data is unavailable; showing what was returned.', remaining: 'remaining', fiveHour: '5-hour limit', weekly: 'Weekly limit', monthly: 'Monthly credits',
       purchased: 'Purchased credits', free: 'Free credits', requests: 'Requests', tokens: 'Tokens', reset: 'Resets', unknown: 'No limit reported by provider',
     }
     const format = number => Number(number).toLocaleString(zh ? 'zh-CN' : 'en-US', { maximumFractionDigits: 3 })
     const date = value => new Date(value).toLocaleString(zh ? 'zh-CN' : 'en-US')
     const dollars = value => `$${format(value)}`
+
+    async function callUsage(rpc, controller, timeoutMs = 35_000) {
+      let timer
+      try {
+        return await Promise.race([
+          Promise.resolve().then(() => rpc.call('/api', 'commandcode-subscription/usage', {}, controller.signal)),
+          new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('usage-timeout')) }, timeoutMs) }),
+        ])
+      } finally { clearTimeout(timer) }
+    }
 
     function Bar({ label, percent, detail, reset }) {
       return h('div', { className: 'ccUsageBar', key: label },
@@ -38,18 +48,18 @@ window.__ModuleLoader__.load({
         const current = ++generation.current
         controller.current?.abort()
         controller.current = new AbortController()
-        const signal = controller.current.signal
+        const activeController = controller.current
         setState(previous => ({ ...previous, loading: true, error: undefined }))
-        Promise.resolve().then(() => rpc.call('/api', 'commandcode-subscription/usage', {}, signal))
+        callUsage(rpc, activeController)
           .then(result => { if (generation.current === current) setState(result?.ok ? { value: result.value } : { error: result?.error ?? 'unavailable' }) })
-          .catch(() => { if (generation.current === current) setState({ error: 'unavailable' }) })
+          .catch(error => { if (generation.current === current) setState({ error: error?.message === 'usage-timeout' ? 'timeout' : 'unavailable' }) })
       }
       React.useEffect(() => {
         dialog.current?.showModal()
         load()
         return () => { generation.current++; controller.current?.abort(); dialog.current?.close() }
       }, [])
-      const error = state.error === 'missing-key' ? copy.missing : state.error === 'invalid-key' ? copy.invalid : copy.unavailable
+      const error = state.error === 'missing-key' ? copy.missing : state.error === 'invalid-key' ? copy.invalid : state.error === 'timeout' ? copy.timeout : copy.unavailable
       const value = state.value
       const windows = value?.windows ?? {}
       const credits = value?.credits ?? {}
@@ -84,6 +94,7 @@ window.__ModuleLoader__.load({
         open ? h(UsageDialog, { rpc, close: () => setOpen(false) }) : null)
     }
     module.exports.inject = ['slots', 'connection']
+    module.exports.__internals = { callUsage }
     module.exports.apply = ctx => {
       const rpc = ctx.get('connection').rpc
       const page = props => h(Page, { ...props, rpc })

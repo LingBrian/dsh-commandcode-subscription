@@ -51,10 +51,15 @@ async function read(path, key, signal, fetchImpl) {
 
 export async function fetchCommandCodeUsage(key, { signal, fetchImpl = fetch } = {}) {
   if (typeof key !== 'string' || !key.trim()) return { ok: false, error: 'missing-key' }
-  const [whoami, summary, credits] = await Promise.all(PATHS.slice(0, 3).map(path => read(path, key, signal, fetchImpl)))
-  const orgId = record(whoami.body?.org)?.id
-  const suffix = typeof orgId === 'string' && orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''
-  const subscription = await read(PATHS[3] + suffix, key, signal, fetchImpl)
+  const whoamiRequest = read(PATHS[0], key, signal, fetchImpl)
+  const summaryRequest = read(PATHS[1], key, signal, fetchImpl)
+  const creditsRequest = read(PATHS[2], key, signal, fetchImpl)
+  const subscriptionRequest = whoamiRequest.then(whoami => {
+    const orgId = record(whoami.body?.org)?.id
+    const suffix = typeof orgId === 'string' && orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''
+    return read(PATHS[3] + suffix, key, signal, fetchImpl)
+  })
+  const [whoami, summary, credits, subscription] = await Promise.all([whoamiRequest, summaryRequest, creditsRequest, subscriptionRequest])
   const responses = [whoami, summary, credits, subscription]
   if (responses.every(item => !item.body)) {
     return { ok: false, error: responses.every(item => item.status === 401 || item.status === 403) ? 'invalid-key' : 'unavailable' }

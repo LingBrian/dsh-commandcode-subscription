@@ -21,7 +21,7 @@ The DSH credential service manages your Command Code API key. The plugin connect
 
 | Feature | Current implementation |
 | --- | --- |
-| Model conversations | Refreshes the public model catalog; shows one built-in placeholder model when offline. The catalog does not prove account entitlement. |
+| Model conversations | Refreshes the public model catalog and retries after startup failures; temporarily shows one built-in placeholder when offline. The catalog does not prove account entitlement. |
 | Streaming | Converts native NDJSON into DSH text, reasoning, tool-call, and tool-result events; supports cancellation. |
 | Image understanding | Enables DSH image attachments for models known to accept image input and sends bounded image data in the native request. |
 | Credentials | Resolves `COMMANDCODE_API_KEY` through DSH's host credential service. The key is never saved in plugin settings or sent to the browser. |
@@ -37,7 +37,7 @@ Use a compatible [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harn
 On the DSH **Plugins → Add plugin** page, paste either source into **Package name or address**:
 
 - **GitHub (repository source):** `github:LingBrian/dsh-commandcode-subscription`
-- **npm (published):** `dsh-commandcode-subscription@0.1.7`
+- **npm (published):** `dsh-commandcode-subscription@0.1.8`
 
 Click **Install** and follow the restart prompt. The GitHub repository includes the prebuilt plugin entry, so installation does not need to run a build script; the npm route installs the published, prebuilt package. To install a later release, replace the npm version with the desired published version.
 
@@ -46,13 +46,13 @@ Click **Install** and follow the restart prompt. The GitHub repository includes 
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # or
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.7
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.8
 ```
 
 For the Web profile with an existing CLI:
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.7
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.8
 ```
 
 To build a source archive for development or offline installation, run from the repository root:
@@ -68,6 +68,8 @@ Then install the generated `.artifacts/*.tgz` as the plugin address. For npm ins
 Configure `COMMANDCODE_API_KEY` in the **DSH credential manager**, or set the same variable in the DSH process environment (the host credential service resolves its environment fallback). **Never** put the key in plugin settings, a chat message, or a browser request. After loading, select a model from the `commandcode-go` provider. Without a key, generation does not contact the upstream service.
 
 **View usage:** Open **Command Code usage** in plugin settings and select **View usage**. The host reads Command Code account endpoints on demand; the API key never reaches the browser. You can refresh the dialog. If some endpoints fail, the available data remains visible with a partial-data notice. Consult your Command Code account for authoritative billing.
+
+If the network or host connection does not respond, the usage dialog reports a timeout after 35 seconds and lets you retry. A failed catalog read at startup is retried in the background; DSH's model list updates after a successful read.
 
 **Image understanding:** Select a model marked for image input in the catalog, such as `deepseek/deepseek-v4.1-flash` or `deepseek/deepseek-v4-flash-vision-exp`, and attach an image in the DSH composer. The vision list is maintained from Command Code's official model table and intersected with the current catalog. The DSH attachment service prepares each request image with a 1 MiB byte target and an approximately 2048 × 2048 pixel budget; encoded images in one request are capped at 20 MiB. Model access still depends on the Command Code account; the public catalog does not guarantee entitlement.
 

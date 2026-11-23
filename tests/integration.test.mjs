@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import { apply, createAdapter, KEY_REF, PROVIDER } from '../src/index.js'
+import { apply, createAdapter, watchModelCatalog, KEY_REF, PROVIDER } from '../src/index.js'
 import { createCommandCodeProvider, parseCommandCodeModels } from '../src/commandcode-provider.js'
 
 const MODEL = parseCommandCodeModels({ data: [{ id: 'fixture/model', name: 'Fixture', context_length: 8192 }] })[0]
@@ -31,7 +31,7 @@ function fakeContext(value) {
       effects.set(label, dispose)
       return dispose
     },
-    inject(_services, register) { register(ctx) },
+    inject(_services, register) { register({ connection: ctx.connection, effect: ctx.effect }) },
   }
   return { ctx, registered, disposed, effects, resolutions, usageRoutes }
 }
@@ -70,6 +70,21 @@ test('apply registers the Command Code route synchronously and disposal unregist
   dispose()
   assert.deepEqual(host.disposed, [host.registered[0].adapter])
   await new Promise(resolve => setImmediate(resolve))
+})
+
+test('catalog refresh retries after a transient startup failure and notifies DSH', async () => {
+  const controller = new AbortController()
+  let attempts = 0
+  let updates = 0
+  const stop = watchModelCatalog({ async refreshModels() {
+    attempts++
+    if (attempts === 1) throw new Error('temporary catalog failure')
+  } }, () => { updates++ }, { signal: controller.signal, retryMs: 1, refreshMs: 60_000 })
+  try {
+    for (let i = 0; i < 50 && updates === 0; i++) await new Promise(resolve => setTimeout(resolve, 2))
+    assert.equal(attempts, 2)
+    assert.equal(updates, 1)
+  } finally { controller.abort(); stop() }
 })
 
 test('adapter lists models only after the DSH credential is present', async () => {

@@ -21,7 +21,7 @@
 
 | 功能 | 当前实现 |
 | --- | --- |
-| 模型对话 | 从公开模型目录刷新列表，离线时展示一个内置占位模型；目录不代表账号权限。 |
+| 模型对话 | 从公开模型目录刷新列表；启动查询失败会后台重试，离线时暂时展示一个内置占位模型。目录不代表账号权限。 |
 | 流式输出 | 将原生 NDJSON 转成 DSH 文本、推理、工具调用和工具结果事件；支持取消。 |
 | 图片理解 | 对已知支持图片的模型开放 DSH 图片附件，并将受限大小的图片转为原生请求内容。 |
 | 凭证 | 从 DSH 宿主凭证服务解析 `COMMANDCODE_API_KEY`；密钥不保存在插件配置或浏览器中。 |
@@ -37,7 +37,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（已发布）**：`dsh-commandcode-subscription@0.1.7`
+- **npm（已发布）**：`dsh-commandcode-subscription@0.1.8`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -46,13 +46,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.7
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.8
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.7
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.8
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：
@@ -68,6 +68,8 @@ pnpm pack --pack-destination .artifacts
 在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
 
 **查看用量：**在插件设置中找到 **Command Code 用量**，点击 **查看用量**。对话框按需通过 DSH 宿主读取 Command Code 账户接口；API Key 不会发送到浏览器。可刷新当前用量。部分接口失败时仍显示已获得的数据，并标注数据不完整。额度单位和计费以 Command Code 账户页面为准。
+
+若网络或宿主连接长时间无响应，用量对话框会在 35 秒后提示超时；可点击 **刷新** 重试。模型目录在启动时查询失败后也会自动重试，成功后更新 DSH 模型列表。
 
 **图片理解：**选择目录中标有图片输入能力的模型（例如 `deepseek/deepseek-v4.1-flash` 或 `deepseek/deepseek-v4-flash-vision-exp`），在 DSH 输入框添加图片后发送。视觉能力名单依据 Command Code 官方模型表维护，并与当前目录交集显示。图片由 DSH 附件服务处理，单张请求图片最大 1 MiB、尺寸预算约 2048 × 2048 像素，单次请求的编码图片总量最大 20 MiB。模型是否可用仍取决于 Command Code 账号权限；公开目录并不保证权限。
 

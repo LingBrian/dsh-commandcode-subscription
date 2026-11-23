@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm'
 test('web client registers its usage page in DSH plugin settings', async () => {
   const source = await readFile(new URL('../src/client.js', import.meta.url), 'utf8')
   let loader
-  runInNewContext(source, { window: { __ModuleLoader__: { load(entry) { loader = entry } } }, navigator: { language: 'zh-CN' } })
+  runInNewContext(source, { window: { __ModuleLoader__: { load(entry) { loader = entry } } }, navigator: { language: 'zh-CN' }, setTimeout, clearTimeout, AbortController })
   assert.equal(loader.id, 'dsh-commandcode-subscription')
   const client = loader.factory(name => {
     assert.equal(name, 'react')
@@ -22,4 +22,14 @@ test('web client registers its usage page in DSH plugin settings', async () => {
   assert.deepEqual(registered.map(item => item.config.name), ['settings.plugins.tab', 'plugins.bundle.config', 'plugins.row.config'])
   assert.equal(registered[1].config.key, 'dsh-commandcode-subscription')
   assert.equal(registered[2].config.key, 'dsh-commandcode-subscription#commandcode-subscription')
+})
+
+test('usage client exits the loading state when RPC never responds', async () => {
+  const source = await readFile(new URL('../src/client.js', import.meta.url), 'utf8')
+  let loader
+  runInNewContext(source, { window: { __ModuleLoader__: { load(entry) { loader = entry } } }, navigator: { language: 'zh-CN' }, setTimeout, clearTimeout, AbortController })
+  const client = loader.factory(() => ({ createElement() {} }))
+  const controller = new AbortController()
+  await assert.rejects(client.__internals.callUsage({ call() { return new Promise(() => {}) } }, controller, 5), /usage-timeout/)
+  assert.equal(controller.signal.aborted, true)
 })
