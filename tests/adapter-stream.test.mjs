@@ -38,3 +38,33 @@ test('real DSH adapter translates provider NDJSON into host stream', async () =>
   assert.ok(events.some(event => JSON.stringify(event).includes('reply')))
   assert.doesNotMatch(JSON.stringify(events), /user_fixture/)
 })
+
+test('DSH image attachment reaches a vision model as native image content', async () => {
+  const model = 'deepseek/deepseek-v4-flash-vision-exp'
+  const image = new Uint8Array([137, 80, 78, 71])
+  let request
+  const provider = createCommandCodeProvider({
+    resolveModels: async ({ parseCommandCodeModels }) => parseCommandCodeModels({ data: [{ id: model, name: 'Vision', context_length: 8192 }] }),
+    fetch: async (_url, init) => {
+      request = JSON.parse(init.body)
+      return { ok: true, body: encode([{ type: 'text-start', id: 't' }, { type: 'text-delta', id: 't', text: 'seen' }, { type: 'text-end', id: 't' }, { type: 'finish', finishReason: 'stop' }]) }
+    },
+  })
+  await provider.refreshModels()
+  const attachments = { async readImageRequest(_ref, target) {
+    assert.ok(target.maxBytes <= 1024 * 1024)
+    return { data: image, bytes: image.byteLength, mediaType: 'image/png', width: 1, height: 1 }
+  } }
+  const adapter = createAdapter({
+    credentials: { async resolve() { return { value: 'user_fixture' } } },
+    get: name => name === 'attachments' ? attachments : undefined,
+  }, { provider })
+  const events = []
+  for await (const event of adapter.stream({ provider: PROVIDER, model, messages: [{ role: 'user', content: [
+    { type: 'text', text: 'What is shown?' },
+    { type: 'image', attachment: { attachmentId: 'sha256:fixture', name: 'fixture.png', width: 1, height: 1, mediaType: 'image/png' } },
+  ] }] })) events.push(event)
+  assert.ok(events.some(event => JSON.stringify(event).includes('seen')))
+  const parts = request.params.messages[0].content
+  assert.deepEqual(parts.at(-1), { type: 'image', image: `data:image/png;base64,${Buffer.from(image).toString('base64')}`, mediaType: 'image/png' })
+})

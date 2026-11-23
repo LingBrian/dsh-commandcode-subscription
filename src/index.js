@@ -6,7 +6,7 @@ import { createCredentialStore } from './credential.js'
 import { currentLocale, localize, withRequestLocale } from './locale.js'
 
 export const name = 'commandcode-subscription'
-export const inject = ['llm', 'credentials']
+export const inject = ['llm', 'credentials', 'attachments']
 export const PROVIDER = 'commandcode-go'
 export const KEY_REF = credentialRef('COMMANDCODE_API_KEY')
 
@@ -35,12 +35,11 @@ export function createAdapter(ctx, { provider = createCommandCodeProvider(), ref
     modelErrors: new Map(),
     transport: 'ndjson',
     streamIdleTimeoutMs: 5 * 60 * 1000,
-    // This initial version deliberately does not advertise image attachments.
-    maxRequestImageBytes: 0,
-    requestImagePixelBudget: 0,
-    requestImageMaxBytes: 0,
-    maxImageBytes: 0,
-    requestImageBudgetCount: 0,
+    maxRequestImageBytes: 20 * 1024 * 1024,
+    requestImagePixelBudget: 2048 * 2048,
+    requestImageMaxBytes: 1024 * 1024,
+    maxImageBytes: 1024 * 1024,
+    requestImageBudgetCount: 20,
   })
   const adapter = new PiAiAdapter({
     profiles: () => new Map([[PROVIDER, profile]]),
@@ -55,6 +54,10 @@ export function createAdapter(ctx, { provider = createCommandCodeProvider(), ref
       }
       return current.key
     },
+    resolveAttachments: () => ctx.get?.('attachments'),
+    // Images are sent as bounded base64 request content. No host path is
+    // exposed to the upstream model or required for visual understanding.
+    resolveImageAccess: () => undefined,
   })
   // PiAiAdapter currently forwards no locale to streamSimple or resolveApiKey.
   // Scope each iterator step to the caller's explicit locale without changing wire payloads.

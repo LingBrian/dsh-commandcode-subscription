@@ -11,6 +11,20 @@ const MAX_LINE_BYTES = 1024 * 1024;
 const MAX_BODY_BYTES = 32 * 1024 * 1024;
 const VERSION = "0.52.1"; // Gateway may change its CLI-version requirement.
 const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+// Capabilities corroborated by the native Command Code Pi provider. The public
+// catalog alone is not proof that every listed model accepts images.
+const IMAGE_MODEL_IDS = new Set([
+  "deepseek/deepseek-v4-flash-vision-exp",
+  "moonshotai/Kimi-K3",
+  "moonshotai/Kimi-K2.7-Code",
+  "moonshotai/Kimi-K2.7-Code-Highspeed",
+  "moonshotai/Kimi-K2.6",
+  "moonshotai/Kimi-K2.5",
+  "MiniMaxAI/MiniMax-M3",
+  "Qwen/Qwen3.8-27B",
+  "stepfun/Step-3.7-Flash",
+  "thinkingmachines/inkling",
+]);
 const FALLBACK_MODELS = { data: [
   { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash (Command Code)", context_length: 1000000 },
 ] }; // Catalog snapshot, not an availability or entitlement guarantee.
@@ -43,7 +57,7 @@ export function parseCommandCodeModels(payload) {
     seen.add(row.id);
     return [{ id: row.id, name: typeof row.name === "string" ? row.name : row.id,
       api: "commandcode-generate", provider: "commandcode-go", baseUrl: ORIGIN,
-      reasoning: false, input: ["text"], contextWindow: row.context_length,
+      reasoning: false, input: IMAGE_MODEL_IDS.has(row.id) ? ["text", "image"] : ["text"], contextWindow: row.context_length,
       maxTokens: Math.min(row.context_length, 131072), cost: { ...ZERO_COST } }];
   });
 }

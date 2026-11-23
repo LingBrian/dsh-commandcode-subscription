@@ -18,6 +18,8 @@ test('public catalog models do not claim unverified reasoning or image support',
   assert.equal(model.provider, 'commandcode-go')
   assert.deepEqual(model.input, ['text'])
   assert.equal(model.reasoning, false)
+  const vision = parseCommandCodeModels({ data: [{ id: 'deepseek/deepseek-v4-flash-vision-exp', name: 'Vision', context_length: 8192 }] })[0]
+  assert.deepEqual(vision.input, ['text', 'image'])
   assert.equal(parseCommandCodeModels({ data: [{ id: 'bad', context_length: -1 }] }).length, 0)
 })
 
