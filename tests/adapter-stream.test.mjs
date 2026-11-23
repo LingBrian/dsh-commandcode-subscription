@@ -39,6 +39,25 @@ test('real DSH adapter translates provider NDJSON into host stream', async () =>
   assert.doesNotMatch(JSON.stringify(events), /user_fixture/)
 })
 
+test('DSH model metadata and selection forward a supported reasoning effort', async () => {
+  const model = 'deepseek/deepseek-v4-flash'
+  let payload
+  const provider = createCommandCodeProvider({
+    resolveModels: async ({ parseCommandCodeModels }) => parseCommandCodeModels({ data: [{ id: model, name: 'DeepSeek V4 Flash', context_length: 8192 }] }),
+    fetch: async (_url, init) => {
+      payload = JSON.parse(init.body)
+      return { ok: true, body: encode([{ type: 'finish', finishReason: 'stop' }]) }
+    },
+  })
+  await provider.refreshModels()
+  const adapter = createAdapter({ credentials: { async resolve() { return { value: 'user_fixture' } } } }, { provider })
+  const descriptor = await adapter.resolveModel(PROVIDER, model)
+  assert.deepEqual(descriptor.reasoning.efforts.map(level => level.id), ['high', 'max'])
+  for await (const _event of adapter.stream({ provider: PROVIDER, model, reasoningEffort: 'max',
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }] })) { /* drain */ }
+  assert.equal(payload.params.reasoning_effort, 'max')
+})
+
 test('DSH image attachment reaches a vision model as native image content', async () => {
   const model = 'deepseek/deepseek-v4.1-flash'
   const image = new Uint8Array([137, 80, 78, 71])

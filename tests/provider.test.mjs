@@ -18,6 +18,11 @@ test('public catalog models do not claim unverified reasoning or image support',
   assert.equal(model.provider, 'commandcode-go')
   assert.deepEqual(model.input, ['text'])
   assert.equal(model.reasoning, false)
+  const effortModel = parseCommandCodeModels({ data: [{ id: 'deepseek/deepseek-v4-flash', context_length: 8192 }] })[0]
+  assert.equal(effortModel.reasoning, true)
+  assert.equal(effortModel.thinkingLevelMap.high, 'high')
+  assert.equal(effortModel.thinkingLevelMap.max, 'max')
+  assert.equal(effortModel.thinkingLevelMap.medium, null)
   const vision = parseCommandCodeModels({ data: [{ id: 'deepseek/deepseek-v4-flash-vision-exp', name: 'Vision', context_length: 8192 }] })[0]
   assert.deepEqual(vision.input, ['text', 'image'])
   for (const id of ['deepseek/deepseek-v4.1-flash', 'deepseek/deepseek-v4.1-flash-fast', 'deepseek/deepseek-v4.1-flash-ultrafast', 'z-ai/glm-5.3-flash']) {
@@ -25,6 +30,17 @@ test('public catalog models do not claim unverified reasoning or image support',
   }
   assert.deepEqual(parseCommandCodeModels({ data: [{ id: 'deepseek/deepseek-v4-flash', context_length: 8192 }] })[0].input, ['text'])
   assert.equal(parseCommandCodeModels({ data: [{ id: 'bad', context_length: -1 }] }).length, 0)
+})
+
+test('selected reasoning effort reaches Command Code generate params', async () => {
+  const selected = parseCommandCodeModels({ data: [{ id: 'deepseek/deepseek-v4-flash', context_length: 8192 }] })[0]
+  let payload
+  const provider = createCommandCodeProvider({ fetch: async (_url, init) => {
+    payload = JSON.parse(init.body)
+    return { ok: true, body: lineStream([{ type: 'finish', finishReason: 'stop' }]) }
+  } })
+  await drain(provider.streamSimple(selected, { systemPrompt: '', messages: [], tools: [] }, { apiKey: 'user_test', reasoning: 'max' }))
+  assert.equal(payload.params.reasoning_effort, 'max')
 })
 
 test('native request conversion and split NDJSON tool sequence', async () => {

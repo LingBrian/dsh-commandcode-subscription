@@ -24,10 +24,11 @@ test('web client registers its usage page in DSH plugin settings', async () => {
     slots: { inject(_name, callback) { callback() }, register(config, component) { registered.push({ config, component }) } },
     effect() {},
   })
-  assert.deepEqual(registered.map(item => item.config.name), ['conversation.input.right', 'settings.plugins.tab', 'plugins.bundle.config', 'plugins.row.config'])
+  assert.deepEqual(registered.map(item => item.config.name), ['conversation.input.right', 'conversation.input.right', 'settings.plugins.tab', 'plugins.bundle.config', 'plugins.row.config'])
   assert.equal(registered[0].config.id, 'commandcode-subscription-quota')
-  assert.equal(registered[2].config.key, 'dsh-commandcode-subscription')
-  assert.equal(registered[3].config.key, 'dsh-commandcode-subscription#commandcode-subscription')
+  assert.equal(registered[1].config.id, 'commandcode-subscription-model-options')
+  assert.equal(registered[3].config.key, 'dsh-commandcode-subscription')
+  assert.equal(registered[4].config.key, 'dsh-commandcode-subscription#commandcode-subscription')
 })
 
 test('composer quota maps 5h, 1w, 1m and polls every 30 seconds without overlap', async () => {
@@ -72,4 +73,15 @@ test('usage client exits the loading state when RPC never responds', async () =>
   const controller = new AbortController()
   await assert.rejects(client.__internals.callUsage({ call() { return new Promise(() => {}) } }, controller, 5), /usage-timeout/)
   assert.equal(controller.signal.aborted, true)
+})
+
+test('speed options only include catalog-listed deployments of the same model family', async () => {
+  const source = await readFile(new URL('../src/client.js', import.meta.url), 'utf8')
+  let loader
+  runInNewContext(source, { window: { __ModuleLoader__: { load(entry) { loader = entry } } }, navigator: { language: 'zh-CN' }, setTimeout, clearTimeout, AbortController })
+  const client = loader.factory(() => ({ createElement() {} }))
+  const models = ['deepseek/deepseek-v4.1-flash', 'deepseek/deepseek-v4.1-flash-fast', 'unrelated'].map(id => ({ id }))
+  assert.deepEqual(Array.from(client.__internals.speedChoices('deepseek/deepseek-v4.1-flash', models), item => item.id),
+    ['deepseek/deepseek-v4.1-flash', 'deepseek/deepseek-v4.1-flash-fast'])
+  assert.equal(client.__internals.speedChoices('unrelated', models).length, 0)
 })

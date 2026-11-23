@@ -22,6 +22,7 @@
 | 功能 | 当前实现 |
 | --- | --- |
 | 模型对话 | 从公开模型目录刷新列表；启动查询失败会后台重试，离线时暂时展示一个内置占位模型。目录不代表账号权限。 |
+| 模型设置 | 选择 Command Code 模型后，输入框右侧的齿轮弹层提供模型搜索、已核实模型的思考等级，以及目录中可用的标准／快速／极速模型变体。思考等级会随生成请求传给 Command Code。 |
 | 流式输出 | 将原生 NDJSON 转成 DSH 文本、推理、工具调用和工具结果事件；支持取消。 |
 | 图片理解 | 对已知支持图片的模型开放 DSH 图片附件，并将受限大小的图片转为原生请求内容。 |
 | 凭证 | 从 DSH 宿主凭证服务解析 `COMMANDCODE_API_KEY`；密钥不保存在插件配置或浏览器中。 |
@@ -37,7 +38,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（发布后）**：`dsh-commandcode-subscription@0.1.9`
+- **npm（发布后）**：`dsh-commandcode-subscription@0.1.10`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -46,13 +47,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.9
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.10
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.9
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.10
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：
@@ -68,6 +69,8 @@ pnpm pack --pack-destination .artifacts
 在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
 
 **查看用量：**在插件设置中找到 **Command Code 用量**，点击 **查看用量**。对话框按需通过 DSH 宿主读取 Command Code 账户接口；API Key 不会发送到浏览器。可刷新当前用量。部分接口失败时仍显示已获得的数据，并标注数据不完整。额度单位和计费以 Command Code 账户页面为准。
+
+**模型设置：**选中 Command Code 模型后，点击输入框右侧的齿轮，可在同一弹层切换模型、思考等级和速度。思考等级只对已核实支持该参数的模型显示，选“模型默认”则不发送 `reasoning_effort`。速度通过切换 Command Code 目录中的独立模型 ID 实现；只有当前目录同时提供同一系列的多个变体时才显示“速度”。切换模型或速度后，请按新模型重新选择可用的思考等级。
 
 若网络或宿主连接长时间无响应，用量对话框会在 35 秒后提示超时；可点击 **刷新** 重试。模型目录在启动时查询失败后也会自动重试，成功后更新 DSH 模型列表。
 
