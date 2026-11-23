@@ -40,7 +40,7 @@ test('real DSH adapter translates provider NDJSON into host stream', async () =>
 })
 
 test('DSH image attachment reaches a vision model as native image content', async () => {
-  const model = 'deepseek/deepseek-v4-flash-vision-exp'
+  const model = 'deepseek/deepseek-v4.1-flash'
   const image = new Uint8Array([137, 80, 78, 71])
   let request
   const provider = createCommandCodeProvider({

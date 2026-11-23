@@ -34,7 +34,7 @@ test('README languages cross-link and document GitHub, npm, and desktop installs
   assert.ok(en.includes('[中文](README.md)'))
   for (const readme of [zh, en]) {
     assert.ok(readme.includes('github:LingBrian/dsh-commandcode-subscription'))
-    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.5'))
+    assert.ok(readme.includes('dsh-commandcode-subscription@0.1.6'))
     assert.ok(readme.includes('dsh plugin --profile desktop add'))
     assert.ok(readme.includes('dsh plugin --profile web add'))
     assert.ok(readme.includes('pnpm pack --pack-destination .artifacts'))

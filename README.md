@@ -36,7 +36,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（已发布）**：`dsh-commandcode-subscription@0.1.5`
+- **npm（已发布）**：`dsh-commandcode-subscription@0.1.6`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -45,13 +45,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.5
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.6
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.5
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.6
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：
@@ -66,7 +66,7 @@ pnpm pack --pack-destination .artifacts
 
 在 **DSH 凭证管理器**中配置 `COMMANDCODE_API_KEY`；或在启动 DSH 的进程环境中设置同名变量（由宿主凭证服务解析环境回退）。**不要**把 Key 填入插件配置、聊天消息或网页。模型加载后选择 `commandcode-go` 提供者的模型。没有 Key 时不会向上游发起生成请求。
 
-**图片理解：**选择目录中标有图片输入能力的模型（例如 `deepseek/deepseek-v4-flash-vision-exp`），在 DSH 输入框添加图片后发送。图片由 DSH 附件服务处理，单张请求图片最大 1 MiB、尺寸预算约 2048 × 2048 像素，单次请求的编码图片总量最大 20 MiB。模型是否可用仍取决于 Command Code 账号权限；公开目录并不保证权限。
+**图片理解：**选择目录中标有图片输入能力的模型（例如 `deepseek/deepseek-v4.1-flash` 或 `deepseek/deepseek-v4-flash-vision-exp`），在 DSH 输入框添加图片后发送。视觉能力名单依据 Command Code 官方模型表维护，并与当前目录交集显示。图片由 DSH 附件服务处理，单张请求图片最大 1 MiB、尺寸预算约 2048 × 2048 像素，单次请求的编码图片总量最大 20 MiB。模型是否可用仍取决于 Command Code 账号权限；公开目录并不保证权限。
 
 ## 使用与限制
 
