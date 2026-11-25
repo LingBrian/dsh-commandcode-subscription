@@ -93,6 +93,14 @@ test('text-only DSML tool calls become validated DSH tool calls', async () => {
   assert.equal(parseDsmlCalls(markup.replace('name="shell"', 'name="unknown"'), tools), null)
   assert.equal(parseDsmlCalls(`Example: ${markup}`, tools), null)
   assert.equal(parseDsmlCalls(`< | DSML | calls>${markup}${markup}< / | DSML | calls>`, tools).length, 2)
+  const screenshot = `${markup}${markup.replace('pwd; ls -la', 'ls -la D:/Workspace/DSH/CommandCode-Go-dsh')}< / | DSML | calls>`
+  const screenshotProvider = createCommandCodeProvider({ fetch: makeFetch([
+    { type: 'text-start', id: 'screenshot' }, { type: 'text-delta', id: 'screenshot', text: screenshot },
+    { type: 'text-end', id: 'screenshot' }, { type: 'finish', finishReason: 'stop' },
+  ]) })
+  const screenshotEvents = await drain(screenshotProvider.streamSimple(model, { ...context, tools }, { apiKey: 'user_test' }))
+  assert.equal(screenshotEvents.find(event => event.type === 'done').reason, 'toolUse')
+  assert.deepEqual(screenshotEvents.find(event => event.type === 'done').message.content.map(part => part.type), ['toolCall', 'toolCall'])
 })
 
 test('reasoning chunks and cancellation are propagated without retries', async () => {

@@ -1,6 +1,6 @@
 {
   "name": "dsh-commandcode-subscription",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Command Code Go models for DeepSeek Harness",
   "keywords": ["deepseek-harness", "dsh-plugin", "commandcode", "command-code", "commandcode-go", "llm", "multi-account", "usage-tracking", "vision-models"],
   "type": "module",
