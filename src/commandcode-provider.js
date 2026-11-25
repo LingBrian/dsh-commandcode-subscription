@@ -295,6 +295,41 @@ function reasonFor(value, hasTools) {
   return "stop";
 }
 
+// Some Command Code models emit their native DSML tool syntax as text rather
+// than structured tool events. Accept only a complete tool-only response and
+// only names advertised in this request; ordinary prose/quoted examples stay text.
+export function parseDsmlCalls(text, tools) {
+  if (typeof text !== 'string' || !Array.isArray(tools) || !tools.length) return null;
+  const open = /^<\s*\|\s*DSML\s*\|\s*invoke\s+name="([^"]+)"\s*>/i;
+  const close = /^<\s*\/\s*\|\s*DSML\s*\|\s*invoke\s*>/i;
+  const param = /^<\s*\|\s*DSML\s*\|\s*parameter\s+name="([^"]+)"(?:\s+string="true")?\s*>([\s\S]*?)<\s*\/\s*\|\s*DSML\s*\|\s*parameter\s*>/i;
+  const allowed = new Map(tools.map(tool => [tool.name, tool]));
+  const calls = [];
+  let rest = text.trim();
+  const wrapper = /^<\s*\|\s*DSML\s*\|\s*calls\s*>/i.exec(rest);
+  if (wrapper) rest = rest.slice(wrapper[0].length).trimStart();
+  while (rest) {
+    if (wrapper && /^<\s*\/\s*\|\s*DSML\s*\|\s*calls\s*>\s*$/i.test(rest)) return calls.length ? calls : null;
+    const start = open.exec(rest);
+    if (!start || !allowed.has(start[1])) return null;
+    const tool = allowed.get(start[1]);
+    rest = rest.slice(start[0].length).trimStart();
+    const args = {};
+    while (true) {
+      const end = close.exec(rest);
+      if (end) { rest = rest.slice(end[0].length).trimStart(); break; }
+      const field = param.exec(rest);
+      if (!field || !Object.hasOwn(tool.parameters?.properties ?? {}, field[1]) || Object.hasOwn(args, field[1])) return null;
+      args[field[1]] = field[2].trim();
+      rest = rest.slice(field[0].length).trimStart();
+    }
+    if (tool.parameters?.required?.some(name => !Object.hasOwn(args, name))) return null;
+    calls.push({ id: crypto.randomUUID(), toolName: start[1], input: args });
+    if (calls.length > 16) return null;
+  }
+  return wrapper ? null : calls.length ? calls : null;
+}
+
 /** Stateful translation; no tool call can finish with missing/malformed/non-object JSON. */
 export function applyCommandCodeEvent(state, event, push) {
   const { output, blocks, locale } = state;
@@ -429,10 +464,36 @@ export function createCommandCodeProvider({ fetch: fetchImpl = globalThis.fetch,
         if (!response.body) throw localizedError(locale, 'emptyResponse');
         stage = 'responseStream';
         const state = { model, output, blocks: new Map(), terminal: false, locale };
+        let pending = [];
+        let pendingText = '';
+        const forward = event => applyCommandCodeEvent(state, event, item => stream.push(item));
+        const flush = () => { for (const item of pending) forward(item); pending = []; pendingText = ''; };
+        const completeText = () => {
+          const calls = parseDsmlCalls(pendingText, context.tools);
+          if (!calls) { flush(); return; }
+          pending = []; pendingText = '';
+          for (const call of calls) forward({ type: 'tool-call', ...call });
+        };
         for await (const event of readCommandCodeLines(response.body, controller.signal, locale)) {
           if (controller.signal.aborted) throw localizedError(locale, 'requestAborted');
-          applyCommandCodeEvent(state, event, (item) => stream.push(item));
+          if ((context.tools ?? []).length && event.type === 'text-start') {
+            if (pending.length) flush();
+            pending.push(event);
+          } else if (pending.length && event.type === 'text-delta') {
+            pending.push(event);
+            pendingText += event.text ?? '';
+            const compact = pendingText.trimStart().replace(/\s/gu, '').toUpperCase();
+            const markers = ['<|DSML|INVOKE', '<|DSML|CALLS'];
+            if (!compact || !markers.some(marker => marker.startsWith(compact) || compact.startsWith(marker))) flush();
+          } else if (pending.length && event.type === 'text-end') {
+            pending.push(event);
+            completeText();
+          } else {
+            if (pending.length) completeText();
+            forward(event);
+          }
         }
+        if (pending.length) completeText();
         if (!state.sawTerminal) throw localizedError(locale, 'streamTruncated');
         if (controller.signal.aborted) throw localizedError(locale, 'requestAborted');
         stream.push({ type: "done", reason: output.stopReason, message: output });

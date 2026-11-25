@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createCommandCodeProvider, parseCommandCodeModels, convertCommandCodeMessages, convertCommandCodeUsage } from '../src/commandcode-provider.js'
+import { createCommandCodeProvider, parseCommandCodeModels, convertCommandCodeMessages, convertCommandCodeUsage, parseDsmlCalls } from '../src/commandcode-provider.js'
 
 const model = parseCommandCodeModels({ data: [{ id: 'fixture/model', name: 'Fixture', context_length: 8192 }] })[0]
 const context = { systemPrompt: 'system', messages: [{ role: 'user', content: 'hello' }], tools: [{ name: 'echo', description: 'Echo', parameters: { type: 'object', properties: {} } }] }
@@ -73,6 +73,26 @@ test('native request conversion and split NDJSON tool sequence', async () => {
   assert.equal(done.message.usage.input, 17)
   assert.equal(done.message.usage.cacheRead, 4)
   assert.equal(done.message.usage.output, 3)
+})
+
+test('text-only DSML tool calls become validated DSH tool calls', async () => {
+  const markup = '< | DSML | invoke name="shell">< | DSML | parameter name="command" string="true">pwd; ls -la< / | DSML | parameter>< | DSML | parameter name="description" string="true">List workspace< / | DSML | parameter>< / | DSML | invoke>'
+  const tools = [{ name: 'shell', description: 'Run shell', parameters: { type: 'object', required: ['command'], properties: { command: { type: 'string' }, description: { type: 'string' } } } }]
+  const provider = createCommandCodeProvider({ fetch: makeFetch([
+    { type: 'text-start', id: 'text-0' },
+    { type: 'text-delta', id: 'text-0', text: markup.slice(0, 3) },
+    { type: 'text-delta', id: 'text-0', text: markup.slice(3) },
+    { type: 'text-end', id: 'text-0' }, { type: 'finish', finishReason: 'stop' },
+  ]) })
+  const events = await drain(provider.streamSimple(model, { ...context, tools }, { apiKey: 'user_test' }))
+  const done = events.find(event => event.type === 'done')
+  assert.equal(done.reason, 'toolUse')
+  assert.deepEqual(done.message.content.map(part => part.type), ['toolCall'])
+  assert.deepEqual(done.message.content[0].arguments, { command: 'pwd; ls -la', description: 'List workspace' })
+  assert.equal(events.some(event => event.type === 'text_delta'), false)
+  assert.equal(parseDsmlCalls(markup.replace('name="shell"', 'name="unknown"'), tools), null)
+  assert.equal(parseDsmlCalls(`Example: ${markup}`, tools), null)
+  assert.equal(parseDsmlCalls(`< | DSML | calls>${markup}${markup}< / | DSML | calls>`, tools).length, 2)
 })
 
 test('reasoning chunks and cancellation are propagated without retries', async () => {

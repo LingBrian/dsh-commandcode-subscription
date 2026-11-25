@@ -38,7 +38,7 @@
 在 DSH 的 **Plugins → Add plugin** 页面，可选择以下任一来源并粘贴到 **Package name or address**：
 
 - **GitHub（仓库源码）**：`github:LingBrian/dsh-commandcode-subscription`
-- **npm（发布后）**：`dsh-commandcode-subscription@0.1.12`
+- **npm（发布后）**：`dsh-commandcode-subscription@0.1.13`
 
 点击 **Install** 并按提示重启。GitHub 仓库包含预构建的插件入口，不需要安装时运行构建脚本；npm 方式安装已发布的预构建包。若安装新版本，可将 npm 地址中的版本号换成所需版本。
 
@@ -47,13 +47,13 @@
 ```sh
 dsh plugin --profile desktop add github:LingBrian/dsh-commandcode-subscription
 # 或
-dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.12
+dsh plugin --profile desktop add dsh-commandcode-subscription@0.1.13
 ```
 
 已有 CLI 的 Web profile 安装命令：
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-subscription@0.1.12
+dsh plugin --profile web add dsh-commandcode-subscription@0.1.13
 ```
 
 从源码打包（开发或离线安装）时，在仓库根目录执行：
